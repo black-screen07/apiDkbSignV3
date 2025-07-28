@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Signé - {{ document_name }}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(120deg, #e0eafc, #cfdef3);
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #ffffff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.15);
+            animation: fadeIn 1s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .header {
+            background: linear-gradient(90deg, #007BFF, #0056b3);
+            padding: 20px;
+            text-align: center;
+            color: #ffffff;
+            border-bottom: 3px solid #004494;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            font-style: italic;
+        }
+        .content {
+            padding: 25px;
+            color: #333333;
+            line-height: 1.8;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #007BFF;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .info-box p {
+            margin: 5px 0;
+        }
+        .download-button {
+            display: inline-block;
+            margin: 30px auto;
+            padding: 15px 30px;
+            background: #28a745;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            box-shadow: 0px 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        .download-button:hover {
+            background: #218838;
+            box-shadow: 0px 7px 20px rgba(33, 136, 56, 0.4);
+            transform: translateY(-2px);
+        }
+        .footer {
+            background: #f1f1f1;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #555555;
+            border-top: 2px solid #e0e0e0;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .footer a {
+            color: #007BFF;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Document Signé avec Succès !</h1>
+            <p>Le processus de signature est terminé</p>
+        </div>
+        <div class="content">
+            <p>Bonjour <strong>{{ name }}</strong>,</p>
+            <p>Le document <strong>"{{ document_name }}"</strong> du workflow <strong>{{ workflow_name }}</strong> a été signé par tous les participants.</p>
+            
+            <div class="info-box">
+                <p><strong>Référence :</strong> {{ reference }}</p>
+                <p><strong>Date de finalisation :</strong> {{ completion_date }}</p>
+            </div>
+
+            <p>Vous pouvez télécharger le document signé en cliquant sur le bouton ci-dessous :</p>
+            <center>
+                <a href="{{ download_url }}" class="download-button">📥 Télécharger le Document</a>
+            </center>
+
+            <p>Merci d'avoir utilisé nos services.</p>
+            <p>Cordialement,<br>L'équipe <strong>DKB Sign</strong></p>
+        </div>
+        <div class="footer">
+            <p>&copy; {{ current_year }} DKB Sign. Tous droits réservés.</p>
+            <p>Pour toute question, n'hésitez pas à <a href="mailto:support@dkbsign.com">nous contacter</a>.</p>
+        </div>
+    </div>
+</body>
+</html>

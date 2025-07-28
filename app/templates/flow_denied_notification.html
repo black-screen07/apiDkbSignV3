@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if is_denier %}Confirmation de votre refus{% else %}Action Refusée{% endif %} - {{ document_name }}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(120deg, #fce7e7, #ffebeb);
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #ffffff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.15);
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .header {
+            background: linear-gradient(90deg, #dc3545, #c82333);
+            padding: 20px;
+            text-align: center;
+            color: #ffffff;
+            border-bottom: 3px solid #bd2130;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 25px;
+            color: #333333;
+            line-height: 1.8;
+        }
+        .alert-box {
+            background: #fff3f3;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .info-box p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .info-box .label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .denial-reason {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            color: #721c24;
+        }
+        .denial-reason h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        .denial-reason p {
+            margin: 0;
+            font-style: italic;
+        }
+        .next-steps {
+            background: #e2e3e5;
+            border: 1px solid #d6d8db;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            color: #383d41;
+        }
+        .next-steps h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #202326;
+        }
+        .footer {
+            background: #f1f1f1;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #555555;
+            border-top: 2px solid #e0e0e0;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .footer a {
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if is_denier %}
+            <h1>✋ Confirmation de Refus</h1>
+            <p>Votre décision a été enregistrée</p>
+            {% else %}
+            <h1>⚠️ Action Refusée</h1>
+            <p>Un participant a refusé d'effectuer les actions requises</p>
+            {% endif %}
+        </div>
+        <div class="content">
+            <p>Bonjour <strong>{{ name }}</strong>,</p>
+            
+            <div class="alert-box">
+                {% if is_denier %}
+                <p>Nous confirmons que vous avez refusé d'effectuer les actions requises dans le workflow.</p>
+                {% else %}
+                <p>Le participant <strong>{{ participant_name }}</strong> a refusé d'effectuer les actions requises dans le workflow.</p>
+                {% endif %}
+            </div>
+
+            <div class="info-box">
+                <p><span class="label">Document :</span> {{ document_name }}</p>
+                <p><span class="label">Workflow :</span> {{ workflow_name }}</p>
+                <p><span class="label">Référence :</span> {{ reference }}</p>
+                <p><span class="label">Date du refus :</span> {{ denial_date }}</p>
+            </div>
+
+            <div class="denial-reason">
+                <h3>📝 {% if is_denier %}Votre raison du refus{% else %}Raison du refus{% endif %} :</h3>
+                <p>{{ denial_reason }}</p>
+            </div>
+
+            {% if is_denier %}
+            <div class="next-steps">
+                <h3>🔍 Prochaines étapes</h3>
+                <p>Le créateur du workflow et les autres participants ont été informés de votre décision.</p>
+                <p>Si vous souhaitez modifier votre décision ou discuter de la situation, veuillez contacter le créateur du workflow.</p>
+            </div>
+            {% endif %}
+
+            <p>Cordialement,<br>L'équipe <strong>DKB Sign</strong></p>
+        </div>
+        <div class="footer">
+            <p>&copy; {{ current_year }} DKB Sign. Tous droits réservés.</p>
+            <p>Pour toute question, n'hésitez pas à <a href="mailto:support@dkbsign.com">nous contacter</a>.</p>
+        </div>
+    </div>
+</body>
+</html>

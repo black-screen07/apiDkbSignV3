@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔔 Nouvelle connexion détectée</title>
+    <style>
+        /* --- RESET / BASE --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f7;
+            margin: 0;
+            padding: 40px 0;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        /* --- CONTAINER --- */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+        }
+
+        /* --- HEADER / LOGO --- */
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+
+        /* --- TITRES --- */
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333333;
+            text-align: center;
+        }
+        .emoji-title {
+            font-size: 32px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* --- TEXTE ET LIENS --- */
+        p {
+            margin: 0 0 16px;
+            line-height: 1.5;
+        }
+        a {
+            text-decoration: none;
+            color: #ffffff; /* Couleur du texte pour les boutons */
+        }
+
+        /* --- ZONE D'INFORMATIONS SUR L'APPAREIL --- */
+        .device-info {
+            background-color: #f0f0f3;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid #e1e1e6;
+        }
+        .device-info h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333333;
+        }
+        .device-info ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .device-info li {
+            font-size: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background-color: #ffffff;
+            border-radius: 8px;
+        }
+        .emoji-icon {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        /* --- ZONE D'ALERTE / WARNING --- */
+        .warning {
+            background-color: #fff3f3;
+            color: #dc2626;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border: 1px solid #fecaca;
+        }
+        .warning ul {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+        .warning li {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* --- BOUTONS --- */
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            border: 2px solid #4285f4;
+            color: #4285f4;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 20px;
+            text-align: center;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            background-color: transparent;
+        }
+        .button:hover {
+            background-color: #4285f4;
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+        .button-danger {
+            border: 2px solid #db4437;
+            color: #db4437;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            background-color: transparent;
+        }
+        .button-danger:hover {
+            background-color: #db4437;
+            color: #ffffff;
+        }
+        .button-approve {
+            border: 2px solid #2CB543;
+            color: #2CB543;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            background-color: transparent;
+        }
+        .button-approve:hover {
+            background-color: #2CB543;
+            color: #ffffff;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        /* --- PIED DE PAGE --- */
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #6e6e73;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e1e1e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- LOGO OU NOM -->
+        <div class="logo">
+            🛡️ DKB Sign
+        </div>
+
+        <!-- TITRE DE L'EMAIL -->
+        <h2>Nouvelle connexion détectée</h2>
+
+        <!-- MESSAGE D'INTRODUCTION -->
+        {% if is_first_device %}
+        <p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;color:#666666;font-size:14px">
+            C'est la première fois que vous vous connectez à votre compte. Pour votre sécurité, nous vous informons de cette connexion.
+            Vous pouvez approuver cet appareil pour ne plus recevoir d'alertes, ou le bloquer si vous ne reconnaissez pas cette activité.
+        </p>
+        {% else %}
+        <p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;color:#666666;font-size:14px">
+            Une nouvelle connexion a été détectée sur votre compte. Pour votre sécurité, veuillez vérifier les détails ci-dessous
+            et choisir si vous souhaitez approuver ou bloquer cet appareil.
+        </p>
+        {% endif %}
+        <p>Bonjour <strong>{{ user_name }}</strong> 👋</p>
+
+        <!-- INFORMATIONS SUR L'APPAREIL -->
+        <div class="device-info">
+            <h3>📱 Détails de la connexion :</h3>
+            <ul>
+                <li><span class="emoji-icon">🕒</span> <strong>Date et heure :</strong> {{ login_time }}</li>
+                <li><span class="emoji-icon">🌐</span> <strong>Navigateur :</strong> {{ browser }} {{ browser_version }}</li>
+                <li><span class="emoji-icon">💻</span> <strong>Système :</strong> {{ os }} {{ os_version }}</li>
+                <li><span class="emoji-icon">🌍</span> <strong>Adresse IP :</strong> {{ ip_address }}</li>
+                <li><span class="emoji-icon">📱</span> <strong>Type d'appareil :</strong> {{ device_type }}</li>
+            </ul>
+        </div>
+
+        <!-- MESSAGE D'ALERTE SI CE N'EST PAS VOUS -->
+        <div class="warning">
+            <p><strong>⚠️ Si vous ne reconnaissez pas cette activité :</strong></p>
+            <ul>
+                <li>🔑 Changez immédiatement votre mot de passe</li>
+                <li>📞 Contactez notre support technique</li>
+                <li>📋 Vérifiez l'historique récent de votre compte</li>
+            </ul>
+        </div>
+
+        <!-- BOUTONS D'ACTION -->
+        <div class="button-container">
+            <a href="{{ approve_link }}" class="button button-approve">✓ Approuver cet appareil</a>
+            <a href="{{ block_link }}" class="button button-danger">⚠ Bloquer cet appareil</a>
+            <a href="{{ support_link }}" class="button">Contacter le support</a>
+        </div>
+
+        <!-- PIED DE PAGE -->
+        <div class="footer">
+            <p>✉️ Cet e-mail a été envoyé automatiquement pour votre sécurité.<br>Merci de ne pas y répondre directement.</p>
+            <p>© {{ current_year }} DKB Sign. Tous droits réservés. 🔒</p>
+        </div>
+    </div>
+</body>
+</html>

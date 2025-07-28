@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification de Demande de Signature</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(120deg, #e0eafc, #cfdef3);
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #ffffff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.15);
+            animation: fadeIn 1s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .header {
+            background: linear-gradient(90deg, #007BFF, #0056b3);
+            padding: 20px;
+            text-align: center;
+            color: #ffffff;
+            border-bottom: 3px solid #004494;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            font-style: italic;
+        }
+        .content {
+            padding: 25px;
+            color: #333333;
+            line-height: 1.8;
+        }
+        .content h3 {
+            color: #007BFF;
+            font-size: 20px;
+            margin-top: 30px;
+            border-bottom: 2px solid #007BFF;
+            display: inline-block;
+            padding-bottom: 5px;
+        }
+        .content ul {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .content ul li {
+            padding: 10px 0 10px 35px;
+            position: relative;
+            font-size: 16px;
+            color: #444;
+            background: #f9f9f9;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .content ul li:before {
+            content: "⭐";
+            position: absolute;
+            left: 10px;
+            font-size: 18px;
+            color: #FFC107;
+        }
+        .button {
+            display: inline-block;
+            margin: 30px auto;
+            padding: 15px 30px;
+            background: #007BFF;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            box-shadow: 0px 5px 15px rgba(0, 123, 255, 0.3);
+        }
+        .button:hover {
+            background: #0056b3;
+            box-shadow: 0px 7px 20px rgba(0, 86, 179, 0.4);
+        }
+        .footer {
+            background: #f1f1f1;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #555555;
+            border-top: 2px solid #e0e0e0;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .footer a {
+            color: #007BFF;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 Notification de Signature</h1>
+            <p>Vous avez des actions en attente !</p>
+        </div>
+        <div class="content">
+            <p>Bonjour <strong>{{ name }}</strong>,</p>
+            <p>Vous avez une ou plusieurs actions à effectuer dans le workflow : <strong>{{ workflow_name }}</strong>.</p>
+            <p>Document : <strong>{{ document_name }}</strong></p>
+            <p>Référence : <strong>{{ reference }}</strong></p>
+            <h3>✅ Actions Requises :</h3>
+            {{ actions_list | safe }}
+            <p>Connectez-vous pour effectuer les actions nécessaires.</p>
+            <a href="https://dkb-sign-ui.vercel.app/auth/login" class="button">Accéder à Mon Compte</a>
+            <p>Merci pour votre collaboration.</p>
+            <p>Cordialement,<br>L'équipe <strong>DKB Sign</strong>.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; {{ current_year }} DKB Sign. Tous droits réservés.</p>
+            <p>Si vous avez reçu cet email par erreur, veuillez <a href="mailto:support@dkbsign.com">nous contacter</a>.</p>
+        </div>
+    </div>
+</body>
+</html>

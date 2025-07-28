@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Document signé - Copie finale</h2>
+    </div>
+
+    <div class="content">
+        <p>Bonjour {{ name }},</p>
+        
+        <p>Le document <strong>{{ document_name }}</strong> a été signé par toutes les parties. Vous trouverez ci-dessous un lien pour télécharger la version finale du document avec toutes les signatures.</p>
+
+        <p>Pour télécharger le document, veuillez cliquer sur le bouton ci-dessous :</p>
+
+        <center>
+            <a href="{{ document_url }}" class="button" target="_blank">Télécharger le document</a>
+        </center>
+
+        <p>Ce lien vous permettra d'accéder à la version finale signée du document.</p>
+
+        <p>Cordialement,<br>L'équipe DKB-Sign</p>
+    </div>
+
+    <div class="footer">
+        <p>&copy; {{ current_year }} DKB-Sign. Tous droits réservés.</p>
+    </div>
+</body>
+</html>

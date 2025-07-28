@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #003366;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .actions {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #0066cc;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Document en attente de signature</h2>
+    </div>
+    
+    <div class="content">
+        <p>Bonjour,</p>
+        
+        <p>Un document nécessite votre signature dans le cadre d'un workflow de signature.</p>
+        
+        <p><strong>Détails du document :</strong></p>
+        <ul>
+            <li>Nom du document : {{ document_name }}</li>
+        </ul>
+
+        <div class="actions">
+            <p><strong>Actions requises :</strong></p>
+            <ul>
+                {% for action in actions %}
+                <li>{{ action }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <p>Pour accéder au document et effectuer les actions requises, veuillez vous connecter à la plateforme.</p>
+    </div>
+    
+    <div class="footer">
+        <p>Cet email a été envoyé automatiquement. Merci de ne pas y répondre.</p>
+        <p>© 2024 DKB Sign. Tous droits réservés.</p>
+    </div>
+</body>
+</html>
