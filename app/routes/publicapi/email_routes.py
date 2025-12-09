@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from app.services.email_service import send_email
 
-email_bp = Blueprint('email_bp', __name__)
+publicapi_email_bp = Blueprint('publicapi_email_bp', __name__)
 
-
-@email_bp.route('/send-email', methods=['POST'])
+@publicapi_email_bp.route('/send-email', methods=['POST'])
 def send_email_route():
     """
     Envoie un email simple.

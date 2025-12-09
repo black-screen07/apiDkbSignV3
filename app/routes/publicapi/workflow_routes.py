@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, url_for, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from app.models import db, Workflow, WorkflowUser, User, Flow, LineFlow, Contact, Document, Company
 from datetime import datetime
 from app.services.email_service import send_email
@@ -13,7 +13,7 @@ import logging
 from pathlib import Path
 from math import ceil
 
-workflow_bp = Blueprint('workflow_bp', __name__)
+publicapi_workflow_bp = Blueprint('publicapi_workflow_bp', __name__)
 
 # Liste des actions valides pour la documentation de l'API
 VALID_ACTIONS_DOC = """
@@ -30,9 +30,8 @@ Actions valides :
 
 DRAFT_FOLDER = Path("documents/drafts")
 
-
-@workflow_bp.route('/workflows', methods=['POST'])
-@jwt_required()
+@publicapi_workflow_bp.route('/workflows', methods=['POST'])
+@require_api_key
 def create_workflow():
     """
     Créer un nouveau workflow avec ses utilisateurs associés.
@@ -42,7 +41,7 @@ def create_workflow():
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -138,16 +137,15 @@ def create_workflow():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-
-@workflow_bp.route('/workflows', methods=['GET'])
-@jwt_required()
+@publicapi_workflow_bp.route('/workflows', methods=['GET'])
+@require_api_key
 def get_workflows():
     """
     Récupérer tous les workflows créés par l'utilisateur connecté.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -243,15 +241,14 @@ def get_workflows():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@workflow_bp.route('/workflows/<int:workflow_id>', methods=['GET'])
-@jwt_required()
+@publicapi_workflow_bp.route('/workflows/<int:workflow_id>', methods=['GET'])
+@require_api_key
 def get_workflow(workflow_id):
     """
     Récupérer un workflow spécifique avec ses détails
     """
     try:
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -332,15 +329,14 @@ def get_workflow(workflow_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@workflow_bp.route('/workflow/<int:workflow_id>', methods=['PUT'])
-@jwt_required()
+@publicapi_workflow_bp.route('/workflow/<int:workflow_id>', methods=['PUT'])
+@require_api_key
 def update_workflow(workflow_id):
     """
     Mettre à jour un workflow existant
     """
     try:
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -478,15 +474,14 @@ def update_workflow(workflow_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-
-@workflow_bp.route('/workflow/<int:workflow_id>', methods=['DELETE'])
-@jwt_required()
+@publicapi_workflow_bp.route('/workflow/<int:workflow_id>', methods=['DELETE'])
+@require_api_key
 def delete_workflow(workflow_id):
     """
     Supprimer un workflow et ses données associées
     """
     try:
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -522,16 +517,15 @@ def delete_workflow(workflow_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-
-@workflow_bp.route('/user-workflows', methods=['GET'])
-@jwt_required()
+@publicapi_workflow_bp.route('/user-workflows', methods=['GET'])
+@require_api_key
 def get_user_workflows():
     """
     Récupérer tous les workflows auxquels l'utilisateur participe.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -629,16 +623,15 @@ def get_user_workflows():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@workflow_bp.route('/workflows/<int:workflow_id>/launch', methods=['POST'])
-@jwt_required()
+@publicapi_workflow_bp.route('/workflows/<int:workflow_id>/launch', methods=['POST'])
+@require_api_key
 def launch_workflow(workflow_id):
     """
     Lance un workflow existant en créant un nouveau flux.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -818,7 +811,6 @@ def launch_workflow(workflow_id):
         current_app.logger.error(f"Erreur lors du lancement du workflow: {str(e)}")
         return jsonify({"error": f"Une erreur est survenue: {str(e)}"}), 500
 
-
 def extract_pdf_metadata(file_path):
     """
     Extrait les métadonnées enrichies d'un fichier PDF.
@@ -873,7 +865,6 @@ def extract_pdf_metadata(file_path):
         logging.error(f"Erreur lors de l'extraction des métadonnées : {str(e)}")
         return {"error": f"Impossible d'extraire les métadonnées : {str(e)}"}
 
-
 def convert_to_json_compatible(data):
     """
     Convertit les objets incompatibles JSON en types compatibles (par exemple, Decimal en float, MetaData en dict).
@@ -891,7 +882,6 @@ def convert_to_json_compatible(data):
     elif hasattr(data, "keys") and hasattr(data, "items"):  # MetaData ou objets similaires
         return {str(key): convert_to_json_compatible(value) for key, value in data.items()}
     return data
-
 
 def human_readable_size(size):
     """

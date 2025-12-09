@@ -1,6 +1,6 @@
 import requests
 from flask import Blueprint, request, jsonify, url_for, send_from_directory, current_app, render_template
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from pathlib import Path
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers
@@ -20,7 +20,7 @@ import os
 from datetime import datetime
 from app.models import User, Company, Document, CertTypeEnum, db, Flow, LineFlow, Contact
 from app.services.email_service import send_email
-from app.utils.signature_utils import (
+from app.utils.public_signature_utils import (
     retrieve_certificates,
     load_signature_image,
     update_signature_volumes,
@@ -30,13 +30,11 @@ from app.utils.signature_utils import (
     update_signature_volumes
 )
 
-flow_signature_bp = Blueprint('flow_signature_bp', __name__)
-
+publicapi_flow_signature_bp = Blueprint('publicapi_flow_signature_bp', __name__)
 
 def get_base_path():
     """Get the absolute base path for file storage"""
     return Path(current_app.root_path).parent
-
 
 # Chemin vers le dossier des PDF signés
 SIGNED_PDF_FOLDER = None  # Will be initialized when the app context is available
@@ -47,8 +45,7 @@ CERTIFICATE_FOLDER = Path("certificates/users")
 SIGNATURE_FOLDER = Path("signatures/users")
 COMPANY_SIGNATURE_FOLDER = Path("signatures/companies")
 
-
-@flow_signature_bp.before_app_request
+@publicapi_flow_signature_bp.before_app_request
 def initialize_paths():
     """Initialize paths when the app context is available"""
     global SIGNED_PDF_FOLDER, _PATHS_INITIALIZED
@@ -57,18 +54,15 @@ def initialize_paths():
         SIGNED_PDF_FOLDER.mkdir(parents=True, exist_ok=True)
         _PATHS_INITIALIZED = True
 
-
 def mm_to_points(mm):
     """Convertit des millimètres en points PDF."""
     return mm * 2.83465
-
 
 def load_cert_chain():
     """Charge la chaîne de certificats DKBS (exemple)."""
     intermediate_cert_path = 'certificates/DKBS/ACDKBSPersonnes2024.cacert.pem'
     root_cert_path = 'certificates/DKBS/ACDKBSRacine2024.cacert.pem'
     return [intermediate_cert_path, root_cert_path]
-
 
 def extract_certificate_and_key(p12_path, password, cert_output_path, key_output_path):
     with open(p12_path, 'rb') as p12_file:
@@ -91,7 +85,6 @@ def extract_certificate_and_key(p12_path, password, cert_output_path, key_output
                 encryption_algorithm=NoEncryption()
             )
         )
-
 
 def retrieve_certificates(user, company):
     """
@@ -152,7 +145,6 @@ def retrieve_certificates(user, company):
 
     return cert_path, key_path, cert_chain
 
-
 def load_signature_image(user):
     """
     Charge l'image de signature en fonction de 'current_img_sign'.
@@ -171,7 +163,6 @@ def load_signature_image(user):
 
     return Image.open(signature_path)
 
-
 def load_stamp_image(user):
     """
     Charge l'image de cachet d'un utilisateur uniquement.
@@ -185,7 +176,6 @@ def load_stamp_image(user):
     except Exception as e:
         current_app.logger.error(f"Erreur lors du chargement de l'image du cachet : {str(e)}")
         raise
-
 
 def add_text_to_pdf(input_pdf_stream, text, page=None, x=50, y=100):
     """
@@ -234,7 +224,6 @@ def add_text_to_pdf(input_pdf_stream, text, page=None, x=50, y=100):
     output_stream.seek(0)
     return output_stream
 
-
 def apply_stamp_to_pdf(input_pdf_stream, user, pages=None, x=50, y=100, width=100, height=50):
     """
     Ajoute un tampon (image) à un PDF.
@@ -277,7 +266,6 @@ def apply_stamp_to_pdf(input_pdf_stream, user, pages=None, x=50, y=100, width=10
     output_stream.seek(0)
     return output_stream
 
-
 def add_image_to_pdf(input_pdf_stream, image_bytes, page, x, y, width=50, height=50):
     """
     Ajoute une image (en bytes) à un PDF sur une page spécifique.
@@ -309,7 +297,6 @@ def add_image_to_pdf(input_pdf_stream, image_bytes, page, x, y, width=50, height
     output_stream.seek(0)
     return output_stream
 
-
 def update_signature_volumes(user, company, count):
     """
     Met à jour le volume de signatures consommées.
@@ -320,8 +307,7 @@ def update_signature_volumes(user, company, count):
         user.signature_volume_used += count
         company.signature_volume_used += count
 
-
-@flow_signature_bp.route('/documents/doc_signed/<path:subfolder>/<filename>', methods=['GET'])
+@publicapi_flow_signature_bp.route('/documents/doc_signed/<path:subfolder>/<filename>', methods=['GET'])
 def download_file(subfolder, filename):
     """
     Endpoint pour télécharger un fichier signé en fonction du sous-dossier.
@@ -341,9 +327,8 @@ def download_file(subfolder, filename):
         current_app.logger.error(f"Error serving file {file_path}: {str(e)}")
         return jsonify({"error": f"Erreur lors de l'accès au fichier: {str(e)}"}), 500
 
-
-@flow_signature_bp.route('flows/<int:flow_id>/sign-pdf', methods=['POST'])
-@jwt_required()
+@publicapi_flow_signature_bp.route('flows/<int:flow_id>/sign-pdf', methods=['POST'])
+@require_api_key
 def sign_pdf(flow_id):
     """
     Endpoint pour signer un document dans un flow.
@@ -351,7 +336,7 @@ def sign_pdf(flow_id):
     du custom_text et du cachet sur plusieurs pages.
     """
     try:
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         current_app.logger.info(f"User {current_user_email} attempting to sign PDF in flow {flow_id}")
 
         # Récupérer l'utilisateur
@@ -432,7 +417,7 @@ def sign_pdf(flow_id):
             
             # Générer l'URL de téléchargement à partir du chemin existant
             download_url = url_for(
-                'flow_signature_bp.download_file',
+                'publicapi_flow_signature_bp.download_file',
                 subfolder=str(Path(document.file_path).parent).replace('\\', '/'),
                 filename=Path(document.file_path).name,
                 _external=True
@@ -449,7 +434,7 @@ def sign_pdf(flow_id):
 
             # Générer l'URL de téléchargement pour le nouveau fichier
             download_url = url_for(
-                'flow_signature_bp.download_file',
+                'publicapi_flow_signature_bp.download_file',
                 subfolder=subfolder,
                 filename=unique_filename,
                 _external=True
@@ -898,16 +883,15 @@ def sign_pdf(flow_id):
         current_app.logger.error(f"Erreur lors de la signature: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-
-@flow_signature_bp.route('flows/<int:flow_id>/send-otp', methods=['POST'])
-@jwt_required()
+@publicapi_flow_signature_bp.route('flows/<int:flow_id>/send-otp', methods=['POST'])
+@require_api_key
 def send_otp(flow_id):
     """
     Envoie un code OTP au signataire actuel du flow.
     Le code OTP est valide pendant 5 minutes.
     """
     try:
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -956,15 +940,14 @@ def send_otp(flow_id):
         db.session.rollback()
         return jsonify({"error": f"Erreur lors de la génération du code : {str(e)}"}), 500
 
-
-@flow_signature_bp.route('flows/<int:flow_id>/verify-otp', methods=['POST'])
-@jwt_required()
+@publicapi_flow_signature_bp.route('flows/<int:flow_id>/verify-otp', methods=['POST'])
+@require_api_key
 def verify_otp(flow_id):
     """
     Vérifie le code OTP fourni par le signataire et applique les actions autorisées.
     """
     try:
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -1003,15 +986,14 @@ def verify_otp(flow_id):
         current_app.logger.error(f"Erreur lors de la vérification de l'OTP : {str(e)}")
         return jsonify({"error": f"Erreur lors de la vérification du code : {str(e)}"}), 500
 
-
-@flow_signature_bp.route('flows/<int:flow_id>/deny', methods=['POST'])
-@jwt_required()
+@publicapi_flow_signature_bp.route('flows/<int:flow_id>/deny', methods=['POST'])
+@require_api_key
 def deny_flow_actions(flow_id):
     """
     Refuse les actions assignées dans un flow. Met le status à 'denied' et arrête le flow.
     """
     try:
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404

@@ -918,3 +918,119 @@ def change_password():
     except Exception as e:
         current_app.logger.error(f"Erreur lors de la modification du mot de passe : {str(e)}")
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
+
+
+@auth_bp.route('/generate-app-key', methods=['POST'])
+@jwt_required()
+def generate_app_key():
+    """
+    Génère une clé API (app_key) pour l'utilisateur authentifié.
+    Cette clé sera utilisée pour l'authentification dans les routes de l'API publique.
+    """
+    try:
+        # Récupérer l'utilisateur authentifié
+        user_email = get_jwt_identity()
+        user = User.query.filter_by(email=user_email).first()
+
+        if not user:
+            return jsonify({"error": "Utilisateur introuvable."}), 404
+
+        # Générer une nouvelle clé API
+        api_key = user.generate_api_key()
+        db.session.commit()
+
+        # Envoyer un email de notification
+        subject = "Nouvelle clé API générée - DKB-Sign"
+        body = (
+            f"Bonjour {user.name},\n\n"
+            f"Une nouvelle clé API a été générée pour votre compte.\n\n"
+            f"Clé API : {api_key}\n\n"
+            f"Cette clé vous permet d'accéder aux API publiques de DKB-Sign.\n"
+            f"Gardez cette clé en sécurité et ne la partagez pas.\n\n"
+            f"Si vous n'êtes pas à l'origine de cette génération, veuillez nous contacter immédiatement.\n\n"
+            f"Cordialement,\nL'équipe DKB-Sign"
+        )
+        html = render_template(
+            'api_key_generated.html',
+            user_name=user.name,
+            api_key=api_key,
+            current_year=datetime.now().year
+        )
+
+        try:
+            send_email(subject, user.email, body, html)
+        except Exception as email_error:
+            current_app.logger.warning(f"Erreur lors de l'envoi de l'email de notification : {str(email_error)}")
+
+        return jsonify({
+            "message": "Clé API générée avec succès.",
+            "api_key": api_key,
+            "created_at": user.api_key_created_at.isoformat(),
+            "active": user.api_key_active
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Erreur lors de la génération de la clé API : {str(e)}")
+        return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
+
+
+@auth_bp.route('/deactivate-app-key', methods=['POST'])
+@jwt_required()
+def deactivate_app_key():
+    """
+    Désactive la clé API de l'utilisateur authentifié.
+    """
+    try:
+        # Récupérer l'utilisateur authentifié
+        user_email = get_jwt_identity()
+        user = User.query.filter_by(email=user_email).first()
+
+        if not user:
+            return jsonify({"error": "Utilisateur introuvable."}), 404
+
+        if not user.api_key:
+            return jsonify({"error": "Aucune clé API n'est définie pour cet utilisateur."}), 400
+
+        # Désactiver la clé API
+        user.deactivate_api_key()
+        db.session.commit()
+
+        return jsonify({
+            "message": "Clé API désactivée avec succès."
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Erreur lors de la désactivation de la clé API : {str(e)}")
+        return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
+
+
+@auth_bp.route('/app-key-status', methods=['GET'])
+@jwt_required()
+def app_key_status():
+    """
+    Récupère le statut de la clé API de l'utilisateur authentifié.
+    """
+    try:
+        # Récupérer l'utilisateur authentifié
+        user_email = get_jwt_identity()
+        user = User.query.filter_by(email=user_email).first()
+
+        if not user:
+            return jsonify({"error": "Utilisateur introuvable."}), 404
+
+        if not user.api_key:
+            return jsonify({
+                "has_api_key": False,
+                "message": "Aucune clé API n'est définie pour cet utilisateur."
+            }), 200
+
+        return jsonify({
+            "has_api_key": True,
+            "api_key": user.api_key,
+            "created_at": user.api_key_created_at.isoformat() if user.api_key_created_at else None,
+            "active": user.api_key_active
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Erreur lors de la récupération du statut de la clé API : {str(e)}")
+        return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500

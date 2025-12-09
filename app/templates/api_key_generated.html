@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouvelle clé API générée - DKB-Sign</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+        }
+        .api-key-section {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .api-key {
+            font-family: 'Courier New', monospace;
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 3px;
+            word-break: break-all;
+            font-size: 14px;
+            border: 1px solid #ced4da;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔑 Nouvelle clé API générée</h1>
+            <p>DKB-Sign - Signature électronique</p>
+        </div>
+
+        <p>Bonjour <strong>{{ user_name }}</strong>,</p>
+
+        <p>Une nouvelle clé API a été générée avec succès pour votre compte DKB-Sign.</p>
+
+        <div class="api-key-section">
+            <h3>Votre clé API :</h3>
+            <div class="api-key">{{ api_key }}</div>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Important :</strong>
+            <ul>
+                <li>Gardez cette clé en sécurité et ne la partagez jamais</li>
+                <li>Cette clé vous permet d'accéder aux API publiques de DKB-Sign</li>
+                <li>Utilisez-la dans le header <code>X-API-Key</code> ou <code>Authorization: Bearer</code></li>
+                <li>Si vous pensez que cette clé a été compromise, désactivez-la immédiatement</li>
+            </ul>
+        </div>
+
+        <h3>Comment utiliser votre clé API :</h3>
+        <p>Pour utiliser votre clé API, incluez-la dans vos requêtes HTTP de l'une des façons suivantes :</p>
+        
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
+            <strong>Méthode 1 - Header X-API-Key :</strong><br>
+            <code>X-API-Key: {{ api_key }}</code>
+        </div>
+        
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
+            <strong>Méthode 2 - Header Authorization :</strong><br>
+            <code>Authorization: Bearer {{ api_key }}</code>
+        </div>
+
+        <p>Si vous n'êtes pas à l'origine de cette génération de clé API, veuillez nous contacter immédiatement à l'adresse support@dkb-sign.com.</p>
+
+        <p>Cordialement,<br>
+        <strong>L'équipe DKB-Sign</strong></p>
+
+        <div class="footer">
+            <p>© {{ current_year }} DKB-Sign. Tous droits réservés.</p>
+            <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+        </div>
+    </div>
+</body>
+</html>

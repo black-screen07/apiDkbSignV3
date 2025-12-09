@@ -1,0 +1,558 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "DKB Sign API - Sign Upload Multiple",
+    "description": "API pour la signature de plusieurs documents PDF uploadés avec signataires externes",
+    "version": "3.0.0",
+    "contact": {
+      "name": "DKB Solutions",
+      "url": "https://dkbsolutions.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://your-domain.com/v3",
+      "description": "Serveur de production"
+    },
+    {
+      "url": "https://staging.your-domain.com/v3",
+      "description": "Serveur de test"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    },
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/sign-upload-multiple": {
+      "post": {
+        "tags": ["Signature"],
+        "summary": "Signer plusieurs documents PDF uploadés avec signataires externes",
+        "description": "Cette route permet de signer un ou plusieurs documents PDF uploadés avec des signataires externes (qui ne sont pas dans la base de données). Chaque document peut avoir plusieurs signataires avec des positions de signature personnalisées.",
+        "operationId": "signUploadMultiple",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["documents", "signers_data", "signature_params"],
+                "properties": {
+                  "documents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "Fichiers PDF à signer (maximum 100)",
+                    "maxItems": 100,
+                    "minItems": 1
+                  },
+                  "signature_image_0": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Image de signature pour le signataire 0 (optionnel)"
+                  },
+                  "signature_image_1": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Image de signature pour le signataire 1 (optionnel)"
+                  },
+                  "signature_image_2": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Image de signature pour le signataire 2 (optionnel)"
+                  },
+                  "signers_data": {
+                    "type": "string",
+                    "description": "JSON string contenant les informations des signataires externes",
+                    "example": "[{\"name\":\"Dupont\",\"firstname\":\"Jean\",\"function\":\"Directeur Général\",\"email\":\"jean.dupont@example.com\",\"phone\":\"+33123456789\"},{\"name\":\"Martin\",\"firstname\":\"Marie\",\"function\":\"Responsable RH\",\"email\":\"marie.martin@example.com\"}]"
+                  },
+                  "signature_params": {
+                    "type": "string",
+                    "description": "JSON string contenant les paramètres de positionnement des signatures",
+                    "example": "[{\"document_index\":0,\"signer_index\":0,\"pages\":[{\"page\":0,\"signatures\":[{\"x\":100,\"y\":200}]}],\"signature_size\":{\"width\":150,\"height\":50}}]"
+                  }
+                }
+              },
+              "examples": {
+                "simple_example": {
+                  "summary": "Exemple simple avec 1 document et 2 signataires",
+                  "value": {
+                    "documents": ["document1.pdf"],
+                    "signature_image_0": "signature_jean.png",
+                    "signature_image_1": "signature_marie.png",
+                    "signers_data": "[{\"name\":\"Dupont\",\"firstname\":\"Jean\",\"function\":\"Directeur\"},{\"name\":\"Martin\",\"firstname\":\"Marie\",\"function\":\"RH\"}]",
+                    "signature_params": "[{\"document_index\":0,\"signer_index\":0,\"pages\":[{\"page\":0,\"signatures\":[{\"x\":100,\"y\":200}]}]},{\"document_index\":0,\"signer_index\":1,\"pages\":[{\"page\":1,\"signatures\":[{\"x\":150,\"y\":300}]}]}]"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Documents signés avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignUploadMultipleSuccessResponse"
+                },
+                "examples": {
+                  "success_example": {
+                    "summary": "Réponse de succès",
+                    "value": {
+                      "message": "2 document(s) signé(s) avec succès avec signataires externes.",
+                      "signed_documents": [
+                        {
+                          "document_name": "document1.pdf",
+                          "signed_pdf_url": "https://your-domain.com/v3/documents/doc_signed/users/user_uuid/signed_document_uuid.pdf",
+                          "signers": [
+                            {
+                              "name": "Dupont",
+                              "firstname": "Jean",
+                              "function": "Directeur Général"
+                            }
+                          ]
+                        }
+                      ],
+                      "total_signatures": 2
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Paramètres invalides ou manquants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_field": {
+                    "summary": "Champ manquant",
+                    "value": {
+                      "error": "Champ 'name' manquant pour le signataire 0."
+                    }
+                  },
+                  "limit_exceeded": {
+                    "summary": "Limite dépassée",
+                    "value": {
+                      "error": "Nombre maximum de documents dépassé. Limite: 100 documents par requête."
+                    }
+                  },
+                  "invalid_json": {
+                    "summary": "JSON invalide",
+                    "value": {
+                      "error": "Format JSON invalide pour signers_data."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentification échouée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalid_api_key": {
+                    "summary": "Clé API invalide",
+                    "value": {
+                      "error": "Clé API manquante ou invalide."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Accès interdit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "insufficient_volume": {
+                    "summary": "Volume insuffisant",
+                    "value": {
+                      "error": "Volume de signatures insuffisant."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur serveur interne",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "server_error": {
+                    "summary": "Erreur serveur",
+                    "value": {
+                      "error": "Erreur lors de la signature : Erreur technique interne"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/doc_signed/{subfolder}/{filename}": {
+      "get": {
+        "tags": ["Documents"],
+        "summary": "Télécharger un document signé",
+        "description": "Télécharge un document PDF signé. Aucune authentification requise.",
+        "operationId": "downloadSignedDocument",
+        "parameters": [
+          {
+            "name": "subfolder",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Sous-dossier contenant le document (ex: users/user_uuid)",
+            "example": "users/123e4567-e89b-12d3-a456-426614174000"
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Nom du fichier PDF signé",
+            "example": "signed_document_uuid.pdf"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document PDF signé",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Fichier introuvable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "file_not_found": {
+                    "summary": "Fichier non trouvé",
+                    "value": {
+                      "error": "Fichier introuvable."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Clé API pour l'authentification"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token Bearer pour l'authentification (format: Bearer <api_key>)"
+      }
+    },
+    "schemas": {
+      "SignerData": {
+        "type": "object",
+        "required": ["name", "firstname", "function"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nom de famille du signataire",
+            "example": "Dupont",
+            "minLength": 1
+          },
+          "firstname": {
+            "type": "string",
+            "description": "Prénom du signataire",
+            "example": "Jean",
+            "minLength": 1
+          },
+          "function": {
+            "type": "string",
+            "description": "Fonction/titre du signataire",
+            "example": "Directeur Général",
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email du signataire (optionnel, améliore la traçabilité)",
+            "example": "jean.dupont@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Numéro de téléphone du signataire (optionnel)",
+            "example": "+33123456789"
+          },
+          "signature_image": {
+            "type": "string",
+            "description": "Nom du fichier d'image de signature (non utilisé actuellement)",
+            "example": "signature_jean.png"
+          }
+        }
+      },
+      "SignaturePosition": {
+        "type": "object",
+        "required": ["x", "y"],
+        "properties": {
+          "x": {
+            "type": "integer",
+            "description": "Position horizontale en pixels (origine: coin supérieur gauche)",
+            "example": 100,
+            "minimum": 0
+          },
+          "y": {
+            "type": "integer",
+            "description": "Position verticale en pixels (origine: coin supérieur gauche)",
+            "example": 200,
+            "minimum": 0
+          }
+        }
+      },
+      "SignaturePage": {
+        "type": "object",
+        "required": ["page", "signatures"],
+        "properties": {
+          "page": {
+            "type": "integer",
+            "description": "Numéro de page (0-based)",
+            "example": 0,
+            "minimum": 0
+          },
+          "signatures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignaturePosition"
+            },
+            "description": "Positions des signatures sur cette page",
+            "minItems": 1
+          }
+        }
+      },
+      "QRCode": {
+        "type": "object",
+        "required": ["page", "x", "y", "data"],
+        "properties": {
+          "page": {
+            "type": "integer",
+            "description": "Numéro de page pour le QR code (0-based)",
+            "example": 0,
+            "minimum": 0
+          },
+          "x": {
+            "type": "integer",
+            "description": "Position horizontale du QR code en pixels",
+            "example": 50,
+            "minimum": 0
+          },
+          "y": {
+            "type": "integer",
+            "description": "Position verticale du QR code en pixels",
+            "example": 50,
+            "minimum": 0
+          },
+          "data": {
+            "type": "string",
+            "description": "Données à encoder dans le QR code",
+            "example": "Signé par Jean Dupont"
+          }
+        }
+      },
+      "SignatureSize": {
+        "type": "object",
+        "required": ["width", "height"],
+        "properties": {
+          "width": {
+            "type": "integer",
+            "description": "Largeur de l'image de signature en pixels",
+            "example": 150,
+            "minimum": 1
+          },
+          "height": {
+            "type": "integer",
+            "description": "Hauteur de l'image de signature en pixels",
+            "example": 50,
+            "minimum": 1
+          }
+        }
+      },
+      "SignatureParam": {
+        "type": "object",
+        "required": ["document_index", "signer_index", "pages"],
+        "properties": {
+          "document_index": {
+            "type": "integer",
+            "description": "Index du document à signer (0-based)",
+            "example": 0,
+            "minimum": 0
+          },
+          "signer_index": {
+            "type": "integer",
+            "description": "Index du signataire dans signers_data (0-based)",
+            "example": 0,
+            "minimum": 0
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignaturePage"
+            },
+            "description": "Pages où appliquer les signatures",
+            "minItems": 1
+          },
+          "stamp_pages": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Pages pour appliquer des paraphes/cachets (optionnel)",
+            "example": [0, 2]
+          },
+          "qrcodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QRCode"
+            },
+            "description": "QR codes à ajouter (optionnel)"
+          },
+          "signature_size": {
+            "$ref": "#/components/schemas/SignatureSize",
+            "description": "Taille personnalisée pour l'image de signature (optionnel)"
+          }
+        }
+      },
+      "SignedDocumentInfo": {
+        "type": "object",
+        "required": ["document_name", "signed_pdf_url", "signers"],
+        "properties": {
+          "document_name": {
+            "type": "string",
+            "description": "Nom du document original",
+            "example": "document1.pdf"
+          },
+          "signed_pdf_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL de téléchargement du document signé",
+            "example": "https://your-domain.com/v3/documents/doc_signed/users/user_uuid/signed_document_uuid.pdf"
+          },
+          "signers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "Dupont"
+                },
+                "firstname": {
+                  "type": "string",
+                  "example": "Jean"
+                },
+                "function": {
+                  "type": "string",
+                  "example": "Directeur Général"
+                }
+              }
+            },
+            "description": "Liste des signataires du document"
+          }
+        }
+      },
+      "SignUploadMultipleSuccessResponse": {
+        "type": "object",
+        "required": ["message", "signed_documents", "total_signatures"],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Message de confirmation",
+            "example": "2 document(s) signé(s) avec succès avec signataires externes."
+          },
+          "signed_documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignedDocumentInfo"
+            },
+            "description": "Informations sur les documents signés"
+          },
+          "total_signatures": {
+            "type": "integer",
+            "description": "Nombre total de documents traités (comptage pour facturation)",
+            "example": 2,
+            "minimum": 1
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Message d'erreur détaillé",
+            "example": "Champ 'name' manquant pour le signataire 0."
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Signature",
+      "description": "Opérations de signature de documents"
+    },
+    {
+      "name": "Documents",
+      "description": "Gestion et téléchargement des documents"
+    }
+  ]
+}

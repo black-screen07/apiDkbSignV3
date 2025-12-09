@@ -1,6 +1,6 @@
 
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from app.models import User, Company, CertTypeEnum
 from pathlib import Path
 from app import db
@@ -13,11 +13,10 @@ from werkzeug.utils import secure_filename
 import json
 import shutil
 
-user_bp = Blueprint('users', __name__)
+publicapi_user_bp = Blueprint('publicapi_users', __name__)
 
 CERTIFICATE_FOLDER = Path("certificates")
 SIGNATURE_FOLDER = Path("signatures")
-
 
 def get_base64_encoded_image(image_path):
     """
@@ -34,9 +33,8 @@ def get_base64_encoded_image(image_path):
         print(f"Erreur lors de l'encodage de l'image : {str(e)}")
         return None
 
-
-@user_bp.route('/users', methods=['GET'])
-@jwt_required()
+@publicapi_user_bp.route('/users', methods=['GET'])
+@require_api_key
 def get_all_individual_users():
     """
     Endpoint pour récupérer tous les utilisateurs individuels non archivés, avec pagination, recherche et informations complètes.
@@ -126,9 +124,8 @@ def get_all_individual_users():
         logging.error(f"Erreur lors de la récupération des utilisateurs : {str(e)}")
         return jsonify({"error": f"Erreur inattendue : {str(e)}"}), 500
 
-
-@user_bp.route('/users/<int:user_id>', methods=['GET'])
-@jwt_required()
+@publicapi_user_bp.route('/users/<int:user_id>', methods=['GET'])
+@require_api_key
 def get_non_admin_user_with_company(user_id):
     """
     Endpoint pour récupérer un utilisateur individuel spécifique par son ID,
@@ -191,9 +188,8 @@ def get_non_admin_user_with_company(user_id):
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la récupération de l'utilisateur : {str(e)}"}), 500
 
-
-@user_bp.route('/companies/<int:company_id>/users', methods=['GET'])
-@jwt_required()
+@publicapi_user_bp.route('/companies/<int:company_id>/users', methods=['GET'])
+@require_api_key
 def get_users_by_company(company_id):
     """
     Endpoint pour récupérer les utilisateurs rattachés à une compagnie donnée.
@@ -293,9 +289,8 @@ def get_users_by_company(company_id):
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la récupération des utilisateurs : {str(e)}"}), 500
 
-
-@user_bp.route('/companies/<int:company_id>/users/<int:user_id>', methods=['GET'])
-@jwt_required()
+@publicapi_user_bp.route('/companies/<int:company_id>/users/<int:user_id>', methods=['GET'])
+@require_api_key
 def get_user_by_company_and_id(company_id, user_id):
     """
     Endpoint pour récupérer les détails d'un utilisateur spécifique rattaché à une compagnie donnée,
@@ -360,16 +355,15 @@ def get_user_by_company_and_id(company_id, user_id):
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la récupération de l'utilisateur : {str(e)}"}), 500
 
-
-@user_bp.route('/users/<int:user_id>', methods=['PUT'])
-@jwt_required()
+@publicapi_user_bp.route('/users/<int:user_id>', methods=['PUT'])
+@require_api_key
 def update_user(user_id):
     """
     Met à jour les informations d'un utilisateur spécifique.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         current_user = User.query.filter_by(email=current_user_email).first()
 
         if not current_user:
@@ -397,7 +391,6 @@ def update_user(user_id):
 
         if not email or not name:
             return jsonify({"error": "Les champs 'email' et 'name' sont obligatoires."}), 400
-
 
         # Récupération et validation des rôles de signature
         sign_roles_raw = data.get('sign_roles')
@@ -538,9 +531,8 @@ def update_user(user_id):
         logging.error(f"Erreur lors de la mise à jour de l'utilisateur : {str(e)}")
         return jsonify({"error": f"Erreur lors de la mise à jour : {str(e)}"}), 500
 
-
-@user_bp.route('/users/<int:user_id>/update-signatures', methods=['PUT'])
-@jwt_required()
+@publicapi_user_bp.route('/users/<int:user_id>/update-signatures', methods=['PUT'])
+@require_api_key
 def update_user_signatures(user_id):
     """
     Met à jour les images de signature d'un utilisateur (img_sign, name_sign, pad_sign, stamp)
@@ -548,7 +540,7 @@ def update_user_signatures(user_id):
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         current_user = User.query.filter_by(email=current_user_email).first()
 
         if not current_user:
@@ -647,9 +639,8 @@ def update_user_signatures(user_id):
         logging.error(f"Erreur lors de la mise à jour des signatures : {str(e)}")
         return jsonify({"error": f"Erreur lors de la mise à jour des signatures : {str(e)}"}), 500
 
-
-@user_bp.route('/users/<int:user_id>/archive', methods=['PUT'])
-@jwt_required()
+@publicapi_user_bp.route('/users/<int:user_id>/archive', methods=['PUT'])
+@require_api_key
 def archive_user(user_id):
     """
     Endpoint pour archiver un utilisateur.
@@ -673,16 +664,15 @@ def archive_user(user_id):
     except Exception as e:
         return jsonify({"error": f"Erreur lors de l'archivage de l'utilisateur : {str(e)}"}), 500
 
-
-@user_bp.route('/users/<int:user_id>', methods=['DELETE'])
-@jwt_required()
+@publicapi_user_bp.route('/users/<int:user_id>', methods=['DELETE'])
+@require_api_key
 def delete_user(user_id):
     """
     Supprime un utilisateur et ses fichiers associés.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         current_user = User.query.filter_by(email=current_user_email).first()
 
         if not current_user:

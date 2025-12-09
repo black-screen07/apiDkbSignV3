@@ -1,11 +1,11 @@
 from flask import Blueprint, jsonify, request, url_for, current_app, send_from_directory
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from app.models import Document, Company, User, Signer, db, Contact
 from pathlib import Path
 from math import ceil
 from sqlalchemy.exc import SQLAlchemyError
 
-document_bp = Blueprint('document_bp', __name__)
+publicapi_document_bp = Blueprint('publicapi_document_bp', __name__)
 
 DRAFTS_FOLDER = Path("documents/drafts")
 DRAFTS_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -13,16 +13,14 @@ DRAFTS_FOLDER.mkdir(parents=True, exist_ok=True)
 SIGNED_PDF_FOLDER = Path("documents/doc_signed")
 SIGNED_PDF_FOLDER.mkdir(parents=True, exist_ok=True)
 
-
-@document_bp.route('/documents/drafts/<path:subfolder>/<filename>', methods=['GET'])
+@publicapi_document_bp.route('/documents/drafts/<path:subfolder>/<filename>', methods=['GET'])
 def download_file(subfolder, filename):
     file_path = DRAFTS_FOLDER / subfolder / filename
     if not file_path.exists():
         return jsonify({"error": "Fichier introuvable."}), 404
     return send_from_directory((DRAFTS_FOLDER / subfolder).resolve(), filename)
 
-
-@document_bp.route('/documents/doc_signed/<path:subfolder>/<filename>', methods=['GET'])
+@publicapi_document_bp.route('/documents/doc_signed/<path:subfolder>/<filename>', methods=['GET'])
 def download_signed_file(subfolder, filename):
     """
     Endpoint pour télécharger un fichier signé en fonction du sous-dossier.
@@ -32,9 +30,8 @@ def download_signed_file(subfolder, filename):
         return jsonify({"error": "Fichier introuvable."}), 404
     return send_from_directory((SIGNED_PDF_FOLDER / subfolder).resolve(), filename)
 
-
-@document_bp.route('/companies/<int:company_id>/documents', methods=['GET'])
-@jwt_required()
+@publicapi_document_bp.route('/companies/<int:company_id>/documents', methods=['GET'])
+@require_api_key
 def get_all_documents_by_company(company_id):
     """
     Récupère tous les documents signés d'une entreprise spécifique avec pagination.
@@ -98,9 +95,8 @@ def get_all_documents_by_company(company_id):
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la récupération des documents : {str(e)}"}), 500
 
-
-@document_bp.route('/companies/<int:company_id>/documents/<int:document_id>', methods=['GET'])
-@jwt_required()
+@publicapi_document_bp.route('/companies/<int:company_id>/documents/<int:document_id>', methods=['GET'])
+@require_api_key
 def get_document_by_company_and_id(company_id, document_id):
     """
     Récupère un document signé spécifique pour une entreprise donnée avec son lien de téléchargement.
@@ -147,16 +143,15 @@ def get_document_by_company_and_id(company_id, document_id):
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la récupération du document : {str(e)}"}), 500
 
-
-@document_bp.route('/signed-documents', methods=['GET'])
-@jwt_required()
+@publicapi_document_bp.route('/signed-documents', methods=['GET'])
+@require_api_key
 def get_signed_documents():
     """
     Récupère tous les documents signés par l'utilisateur connecté avec pagination.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -278,21 +273,21 @@ def get_signed_documents():
             document_url = None
             if document.status == "signed":  # Cas où le document est signé directement
                 document_url = url_for(
-                    'document_bp.download_signed_file',
+                    'publicapi_document_bp.download_signed_file',
                     subfolder=document.file_path.rsplit('/', 1)[0],
                     filename=document.file_path.rsplit('/', 1)[-1],
                     _external=True
                 )
             elif has_signed:  # Cas où au moins un signataire a signé
                 document_url = url_for(
-                    'document_bp.download_signed_file',
+                    'publicapi_document_bp.download_signed_file',
                     subfolder=document.file_path.rsplit('/', 1)[0],
                     filename=document.file_path.rsplit('/', 1)[-1],
                     _external=True
                 )
             else:  # Cas où le document n'est pas encore signé
                 document_url = url_for(
-                    'document_bp.download_file',
+                    'publicapi_document_bp.download_file',
                     subfolder=document.file_path.rsplit('/', 1)[0],
                     filename=document.file_path.rsplit('/', 1)[-1],
                     _external=True
@@ -332,16 +327,15 @@ def get_signed_documents():
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la récupération des documents : {str(e)}"}), 500
 
-
-@document_bp.route('/signed-documents/<int:document_id>', methods=['GET'])
-@jwt_required()
+@publicapi_document_bp.route('/signed-documents/<int:document_id>', methods=['GET'])
+@require_api_key
 def get_user_document_by_id(document_id):
     """
     Récupère un document spécifique signé par l'utilisateur connecté avec son lien de téléchargement.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -451,21 +445,21 @@ def get_user_document_by_id(document_id):
         document_url = None
         if document.status == "signed":  # Cas où le document est signé directement
             document_url = url_for(
-                'document_bp.download_signed_file',
+                'publicapi_document_bp.download_signed_file',
                 subfolder=document.file_path.rsplit('/', 1)[0],
                 filename=document.file_path.rsplit('/', 1)[-1],
                 _external=True
             )
         elif has_signed:  # Cas où au moins un signataire a signé
             document_url = url_for(
-                'document_bp.download_signed_file',
+                'publicapi_document_bp.download_signed_file',
                 subfolder=document.file_path.rsplit('/', 1)[0],
                 filename=document.file_path.rsplit('/', 1)[-1],
                 _external=True
             )
         else:  # Cas où le document n'est pas encore signé
             document_url = url_for(
-                'document_bp.download_file',
+                'publicapi_document_bp.download_file',
                 subfolder=document.file_path.rsplit('/', 1)[0],
                 filename=document.file_path.rsplit('/', 1)[-1],
                 _external=True
@@ -490,13 +484,12 @@ def get_user_document_by_id(document_id):
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la récupération du document : {str(e)}"}), 500
 
-
-@document_bp.route('/pending-documents', methods=['GET'])
-@jwt_required()
+@publicapi_document_bp.route('/pending-documents', methods=['GET'])
+@require_api_key
 def list_user_pending_documents():
     try:
         # Récupérer l'ID de l'utilisateur connecté depuis le JWT
-        user_email = get_jwt_identity()
+        user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=user_email).first()
 
         if not user:
@@ -603,21 +596,21 @@ def list_user_pending_documents():
             document_url = None
             if document.status == "signed":  # Cas où le document est signé directement
                 document_url = url_for(
-                    'document_bp.download_signed_file',
+                    'publicapi_document_bp.download_signed_file',
                     subfolder=document.file_path.rsplit('/', 1)[0],
                     filename=document.file_path.rsplit('/', 1)[-1],
                     _external=True
                 )
             elif has_signed:  # Cas où au moins un signataire a signé
                 document_url = url_for(
-                    'document_bp.download_signed_file',
+                    'publicapi_document_bp.download_signed_file',
                     subfolder=document.file_path.rsplit('/', 1)[0],
                     filename=document.file_path.rsplit('/', 1)[-1],
                     _external=True
                 )
             else:  # Cas où le document n'est pas encore signé
                 document_url = url_for(
-                    'document_bp.download_file',
+                    'publicapi_document_bp.download_file',
                     subfolder=document.file_path.rsplit('/', 1)[0],
                     filename=document.file_path.rsplit('/', 1)[-1],
                     _external=True
@@ -657,13 +650,12 @@ def list_user_pending_documents():
         current_app.logger.error(f"Erreur lors de la récupération des documents en attente : {str(e)}")
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
 
-
-@document_bp.route('/pending-documents/<int:document_id>', methods=['GET'])
-@jwt_required()
+@publicapi_document_bp.route('/pending-documents/<int:document_id>', methods=['GET'])
+@require_api_key
 def get_user_pending_document(document_id):
     try:
         # Récupérer l'utilisateur connecté depuis le JWT
-        user_email = get_jwt_identity()
+        user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=user_email).first()
 
         if not user:
@@ -705,21 +697,21 @@ def get_user_pending_document(document_id):
         document_url = None
         if document.status == "signed":  # Cas où le document est signé directement
             document_url = url_for(
-                'document_bp.download_signed_file',
+                'publicapi_document_bp.download_signed_file',
                 subfolder=document.file_path.rsplit('/', 1)[0],
                 filename=document.file_path.rsplit('/', 1)[-1],
                 _external=True
             )
         elif has_signed:  # Cas où au moins un signataire a signé
             document_url = url_for(
-                'document_bp.download_signed_file',
+                'publicapi_document_bp.download_signed_file',
                 subfolder=document.file_path.rsplit('/', 1)[0],
                 filename=document.file_path.rsplit('/', 1)[-1],
                 _external=True
             )
         else:  # Cas où le document n'est pas encore signé
             document_url = url_for(
-                'document_bp.download_file',
+                'publicapi_document_bp.download_file',
                 subfolder=document.file_path.rsplit('/', 1)[0],
                 filename=document.file_path.rsplit('/', 1)[-1],
                 _external=True
@@ -802,13 +794,12 @@ def get_user_pending_document(document_id):
     except Exception as e:
         return jsonify({"error": f"Erreur: {str(e)}"}), 500
 
-
-@document_bp.route('/documents/sign/<path:file_path>', methods=['GET'])
-@jwt_required()
+@publicapi_document_bp.route('/documents/sign/<path:file_path>', methods=['GET'])
+@require_api_key
 def get_document_to_sign(file_path):
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -837,8 +828,7 @@ def get_document_to_sign(file_path):
         current_app.logger.error(f"Erreur lors de l'accès au document : {str(e)}")
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
 
-
-@document_bp.route('/doc-to-sign/', methods=['GET'])
+@publicapi_document_bp.route('/doc-to-sign/', methods=['GET'])
 def get_document_url():
     try:
         # Récupérer l'UUID depuis les paramètres de requête
@@ -897,9 +887,9 @@ def get_document_url():
 
         # Choisir la bonne fonction de téléchargement
         if use_signed_download:
-            download_endpoint = 'document_bp.download_signed_file'
+            download_endpoint = 'publicapi_document_bp.download_signed_file'
         else:
-            download_endpoint = 'document_bp.download_file'
+            download_endpoint = 'publicapi_document_bp.download_file'
 
         download_link = url_for(
             download_endpoint,
@@ -981,8 +971,7 @@ def get_document_url():
         current_app.logger.error(f"Erreur lors de la récupération du document : {str(e)}")
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
 
-
-@document_bp.route('/doc-to-sign-multiple/', methods=['GET'])
+@publicapi_document_bp.route('/doc-to-sign-multiple/', methods=['GET'])
 def get_document_url_multiple():
     try:
         # Récupérer le batch_uuid depuis les paramètres de requête
@@ -1053,9 +1042,9 @@ def get_document_url_multiple():
 
             # Choisir la bonne fonction de téléchargement
             if use_signed_download:
-                download_endpoint = 'document_bp.download_signed_file'
+                download_endpoint = 'publicapi_document_bp.download_signed_file'
             else:
-                download_endpoint = 'document_bp.download_file'
+                download_endpoint = 'publicapi_document_bp.download_file'
 
             download_link = url_for(
                 download_endpoint,

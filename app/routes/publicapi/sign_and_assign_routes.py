@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, url_for, send_from_directory, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from pathlib import Path
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.sign import signers
@@ -21,7 +21,7 @@ import os
 from sqlalchemy.exc import SQLAlchemyError
 import urllib.parse
 import http.client
-from app.utils.signature_utils import (
+from app.utils.public_signature_utils import (
     load_pdf,
     retrieve_certificates,
     load_signature_image,
@@ -37,8 +37,7 @@ from app.utils.signature_utils import (
     apply_stamp
 )
 
-
-sign_and_assign_bp = Blueprint('sign_and_assign_bp', __name__)
+publicapi_sign_and_assign_bp = Blueprint('publicapi_sign_and_assign_bp', __name__)
 
 SIGNED_PDF_FOLDER = Path("documents/doc_signed")
 SIGNED_PDF_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -51,24 +50,22 @@ DRAFT_PDF_FOLDER = Path("documents/doc_draft")
 DRAFT_PDF_FOLDER = Path("documents/drafts")
 DRAFT_PDF_FOLDER.mkdir(parents=True, exist_ok=True)
 
-
-@sign_and_assign_bp.route('/documents/doc_signed/<path:subfolder>/<filename>', methods=['GET'])
+@publicapi_sign_and_assign_bp.route('/documents/doc_signed/<path:subfolder>/<filename>', methods=['GET'])
 def download_file(subfolder, filename):
     file_path = SIGNED_PDF_FOLDER / subfolder / filename
     if not file_path.exists():
         return jsonify({"error": "Fichier introuvable."}), 404
     return send_from_directory((SIGNED_PDF_FOLDER / subfolder).resolve(), filename)
 
-
-@sign_and_assign_bp.route('/sign-and-assign', methods=['POST'])
-@jwt_required()
+@publicapi_sign_and_assign_bp.route('/sign-and-assign', methods=['POST'])
+@require_api_key
 def sign_pdf():
     """
     Point d’entrée principal pour la signature et l’envoi aux autres signataires.
     """
     try:
         # 1) Récupération de l’utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur introuvable."}), 404
@@ -157,9 +154,9 @@ def sign_pdf():
         # 5) Gestion du consentement éventuel
         requires_consent = False
         if user.account_type == "individual":
-            requires_consent = user.with_consent
+            requires_consent = user.with_consent if user.with_consent is not None else False
         elif user.account_type == "employee" and company:
-            requires_consent = company.with_consent
+            requires_consent = company.with_consent if company.with_consent is not None else False
 
         if requires_consent and not document_id:
             return jsonify({"error": "Le consentement est requis pour signer ce document, mais aucun document_id n'a été fourni."}), 400
@@ -208,7 +205,7 @@ def sign_pdf():
 
         # Générer l'URL finale avec le même UUID
         full_signed_pdf_url = url_for(
-            'sign_and_assign_bp.download_file',
+            'publicapi_sign_and_assign_bp.download_file',
             subfolder=subfolder,
             filename=unique_filename,
             _external=True
@@ -259,7 +256,7 @@ def sign_pdf():
             relative_file_path = os.path.relpath(signed_pdf_path, SIGNED_PDF_FOLDER).replace("\\", "/")
 
             full_signed_pdf_url = url_for(
-                'sign_and_assign_bp.download_file',
+                'publicapi_sign_and_assign_bp.download_file',
                 subfolder=subfolder,
                 filename=unique_filename,
                 _external=True
@@ -520,7 +517,7 @@ def sign_pdf():
                     recipient = User.query.get(signer.signer_id)
                 if recipient:
                     download_link = url_for(
-                        'sign_and_assign_bp.download_file',
+                        'publicapi_sign_and_assign_bp.download_file',
                         subfolder=document.file_path.rsplit('/', 1)[0],
                         filename=document.file_path.rsplit('/', 1)[-1],
                         _external=True
@@ -567,8 +564,7 @@ def sign_pdf():
         current_app.logger.error(f"Erreur lors de la signature : {str(e)}", exc_info=True)
         return jsonify({"error": f"Erreur lors de la signature : {str(e)}"}), 500
 
-
-@sign_and_assign_bp.route('/verify-ext-doc-access', methods=['POST'])
+@publicapi_sign_and_assign_bp.route('/verify-ext-doc-access', methods=['POST'])
 def verify_otp():
     try:
         data = request.get_json()
@@ -594,7 +590,7 @@ def verify_otp():
             return jsonify({"error": "Document associé introuvable."}), 404
 
         full_signed_pdf_url = url_for(
-            'sign_and_assign_bp.download_file',
+            'publicapi_sign_and_assign_bp.download_file',
             subfolder=document.file_path.rsplit('/', 1)[0],
             filename=document.file_path.rsplit('/', 1)[-1],
             _external=True
@@ -612,8 +608,7 @@ def verify_otp():
     except Exception as e:
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
 
-
-@sign_and_assign_bp.route('/verify-ext-doc-access-multiple', methods=['POST'])
+@publicapi_sign_and_assign_bp.route('/verify-ext-doc-access-multiple', methods=['POST'])
 def verify_otp_multiple():
     """
     Endpoint pour vérifier les codes OTP de plusieurs signataires associés à un batch_uuid.
@@ -653,7 +648,7 @@ def verify_otp_multiple():
                         continue
 
                     full_signed_pdf_url = url_for(
-                        'sign_and_assign_bp.download_file',
+                        'publicapi_sign_and_assign_bp.download_file',
                         subfolder=document.file_path.rsplit('/', 1)[0],
                         filename=document.file_path.rsplit('/', 1)[-1],
                         _external=True
@@ -691,7 +686,7 @@ def verify_otp_multiple():
 
                 # Générer l'URL du document
                 full_signed_pdf_url = url_for(
-                    'sign_and_assign_bp.download_file',
+                    'publicapi_sign_and_assign_bp.download_file',
                     subfolder=document.file_path.rsplit('/', 1)[0],
                     filename=document.file_path.rsplit('/', 1)[-1],
                     _external=True
@@ -745,8 +740,7 @@ def verify_otp_multiple():
         current_app.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
 
-
-@sign_and_assign_bp.route('/sign-recep-pdf', methods=['POST'])
+@publicapi_sign_and_assign_bp.route('/sign-recep-pdf', methods=['POST'])
 def sign_document():
     """
     Endpoint pour un signataire (interne ou externe) qui signe un document déjà en circulation.
@@ -874,7 +868,7 @@ def sign_document():
         # Pour les signataires suivants, on conserve l'URL existante du document
         if max_signed_priority == 0:
             final_signed_pdf_url = url_for(
-                'sign_and_assign_bp.download_file',
+                'publicapi_sign_and_assign_bp.download_file',
                 subfolder=subfolder,
                 filename=new_filename,
                 _external=True
@@ -883,7 +877,7 @@ def sign_document():
             # Conserver l'URL existante pour ne pas invalider les signatures précédentes
             new_filename = os.path.basename(document.file_path)
             final_signed_pdf_url = url_for(
-                'sign_and_assign_bp.download_file',
+                'publicapi_sign_and_assign_bp.download_file',
                 subfolder=subfolder,
                 filename=new_filename,
                 _external=True
@@ -908,7 +902,7 @@ def sign_document():
             # Si aucun QR code n'est défini, on conserve le nom existant
             new_filename = os.path.basename(document.file_path)
             final_signed_pdf_url = url_for(
-                'sign_and_assign_bp.download_file',
+                'publicapi_sign_and_assign_bp.download_file',
                 subfolder=subfolder,
                 filename=new_filename,
                 _external=True
@@ -956,7 +950,7 @@ def sign_document():
                     recipient = User.query.get(signer.signer_id)
                 if recipient:
                     download_link = url_for(
-                        'sign_and_assign_bp.download_file',
+                        'publicapi_sign_and_assign_bp.download_file',
                         subfolder=subfolder,
                         filename=new_filename,
                         _external=True
@@ -989,7 +983,7 @@ def sign_document():
             os.remove(signer_stamp_path)
 
         full_signed_pdf_url = url_for(
-            'sign_and_assign_bp.download_file',
+            'publicapi_sign_and_assign_bp.download_file',
             subfolder=subfolder,
             filename=new_filename,
             _external=True
@@ -1003,8 +997,7 @@ def sign_document():
         db.session.rollback()
         return jsonify({"error": f"Erreur: {str(e)}"}), 500
 
-
-@sign_and_assign_bp.route('/sign-recep-pdf-multiple', methods=['POST'])
+@publicapi_sign_and_assign_bp.route('/sign-recep-pdf-multiple', methods=['POST'])
 def sign_document_multiple():
     """
     Endpoint pour un signataire (interne ou externe) qui signe plusieurs documents en circulation associés à un batch_uuid.
@@ -1175,7 +1168,7 @@ def sign_document_multiple():
                 new_filename = f"signed_pdf_{uuid.uuid4().hex}.pdf"
                 if max_signed_priority == 0:
                     final_signed_pdf_url = url_for(
-                        'sign_and_assign_bp.download_file',
+                        'publicapi_sign_and_assign_bp.download_file',
                         subfolder=subfolder,
                         filename=new_filename,
                         _external=True
@@ -1183,7 +1176,7 @@ def sign_document_multiple():
                 else:
                     new_filename = os.path.basename(document.file_path)
                     final_signed_pdf_url = url_for(
-                        'sign_and_assign_bp.download_file',
+                        'publicapi_sign_and_assign_bp.download_file',
                         subfolder=subfolder,
                         filename=new_filename,
                         _external=True
@@ -1207,7 +1200,7 @@ def sign_document_multiple():
                 else:
                     new_filename = os.path.basename(document.file_path)
                     final_signed_pdf_url = url_for(
-                        'sign_and_assign_bp.download_file',
+                        'publicapi_sign_and_assign_bp.download_file',
                         subfolder=subfolder,
                         filename=new_filename,
                         _external=True
@@ -1253,7 +1246,7 @@ def sign_document_multiple():
                             recipient = User.query.get(signer.signer_id)
                         if recipient:
                             download_link = url_for(
-                                'sign_and_assign_bp.download_file',
+                                'publicapi_sign_and_assign_bp.download_file',
                                 subfolder=subfolder,
                                 filename=new_filename,
                                 _external=True
@@ -1328,7 +1321,6 @@ def sign_document_multiple():
         current_app.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
 
-
 def retrieve_document(user, document_id):
     document = Document.query.get(document_id)
     if not document:
@@ -1336,7 +1328,6 @@ def retrieve_document(user, document_id):
     if document.user_id != user.id:
         raise ValueError("Vous n'avez pas la permission d'accéder à ce document.")
     return document
-
 
 def parse_request_content(request):
     params = {}
@@ -1370,7 +1361,6 @@ def parse_request_content(request):
         raise ValueError("Les paramètres JSON sont mal structurés ou manquants.")
 
     return params, file_url, file
-
 
 def update_existing_document(document, params, relative_file_path):
     """

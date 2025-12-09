@@ -3,16 +3,15 @@ import uuid
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from app import db
 from app.models import User, Document, DocumentConsent
 from app.services.email_service import send_email
-from flask_jwt_extended import jwt_required, get_jwt_identity
 
-consent_bp = Blueprint('consent_bp', __name__)
+publicapi_consent_bp = Blueprint('publicapi_consent_bp', __name__)
 
-
-@consent_bp.route('/consents', methods=['POST'])
-@jwt_required()
+@publicapi_consent_bp.route('/consents', methods=['POST'])
+@require_api_key
 def request_consent():
     data = request.json or {}
     document_id = data.get('document_id')
@@ -22,7 +21,7 @@ def request_consent():
         return jsonify({"error": "document_id est obligatoire."}), 400
 
     # Récupérer l'utilisateur connecté via son email
-    current_user_email = get_jwt_identity()
+    current_user_email = get_authenticated_user_by_api_key().email
     user = User.query.filter_by(email=current_user_email).first()
 
     if not user:
@@ -53,9 +52,8 @@ def request_consent():
         "consent_id": consent.id
     }), 201
 
-
-@consent_bp.route('/consents/verify', methods=['POST'])
-@jwt_required()
+@publicapi_consent_bp.route('/consents/verify', methods=['POST'])
+@require_api_key
 def verify_consent():
     """
     Vérifie le code OTP fourni par l'utilisateur pour confirmer son consentement.
@@ -69,7 +67,7 @@ def verify_consent():
         return jsonify({"error": "consent_id et otp_code sont obligatoires."}), 400
 
     # Récupérer l'email de l'utilisateur depuis le token
-    current_user_email = get_jwt_identity()
+    current_user_email = get_authenticated_user_by_api_key().email
     if not current_user_email:
         return jsonify({"error": "Utilisateur non authentifié."}), 401
 
@@ -98,9 +96,8 @@ def verify_consent():
         "verified_at": consent.verified_at.isoformat() if consent.verified_at else None
     }), 200
 
-
-@consent_bp.route('/consents/multiple', methods=['POST'])
-@jwt_required()
+@publicapi_consent_bp.route('/consents/multiple', methods=['POST'])
+@require_api_key
 def request_consents():
     """
     Crée un batch de consentements pour plusieurs documents avec un OTP partagé.
@@ -108,7 +105,7 @@ def request_consents():
     """
     try:
         # Récupérer l'email de l'utilisateur depuis le token
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         if not current_user_email:
             return jsonify({"error": "Utilisateur non authentifié."}), 401
 
@@ -176,9 +173,8 @@ def request_consents():
         current_app.logger.error(f"Erreur lors de la création des consentements : {str(e)}")
         return jsonify({"error": f"Erreur lors de la création des consentements : {str(e)}"}), 500
 
-
-@consent_bp.route('/consents/verify/multiple', methods=['POST'])
-@jwt_required()
+@publicapi_consent_bp.route('/consents/verify/multiple', methods=['POST'])
+@require_api_key
 def verify_consents():
     """
     Vérifie le code OTP fourni par l'utilisateur pour confirmer un batch de consentements.
@@ -192,7 +188,7 @@ def verify_consents():
         return jsonify({"error": "batch_id et otp_code sont obligatoires."}), 400
 
     # Récupérer l'email de l'utilisateur depuis le token
-    current_user_email = get_jwt_identity()
+    current_user_email = get_authenticated_user_by_api_key().email
     if not current_user_email:
         return jsonify({"error": "Utilisateur non authentifié."}), 401
 

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenue sur DKB-Sign</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .welcome-title {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .highlight {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+            margin: 20px 0;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #dee2e6;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔐 DKB-Sign</div>
+            <h1 class="welcome-title">Bienvenue sur DKB-Sign !</h1>
+        </div>
+
+        <div class="content">
+            <p>Bonjour <strong>{{ user_name }}</strong>,</p>
+            
+            <p>Félicitations ! Votre compte individuel DKB-Sign a été créé avec succès.</p>
+
+            <div class="info-box">
+                <h3>📋 Informations de votre compte :</h3>
+                <ul>
+                    <li><strong>Email :</strong> {{ email }}</li>
+                    <li><strong>Type de compte :</strong> Individuel</li>
+                    <li><strong>Statut :</strong> Actif</li>
+                </ul>
+            </div>
+
+            <div class="highlight">
+                <h3>🚀 Que pouvez-vous faire maintenant ?</h3>
+                <ul>
+                    <li>Signer des documents PDF de manière électronique</li>
+                    <li>Gérer vos signatures et certificats</li>
+                    <li>Accéder à l'historique de vos signatures</li>
+                    <li>Utiliser l'API pour intégrer la signature dans vos applications</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h3>🔒 Sécurité de votre compte</h3>
+                <p>Votre compte est maintenant actif avec le mot de passe que vous avez défini. Assurez-vous de :</p>
+                <ul>
+                    <li>Garder votre mot de passe confidentiel</li>
+                    <li>Ne jamais partager vos identifiants</li>
+                    <li>Vous déconnecter après chaque session</li>
+                </ul>
+            </div>
+
+            <p>Si vous avez des questions ou besoin d'assistance, n'hésitez pas à nous contacter.</p>
+        </div>
+
+        <div class="footer">
+            <p>Merci de votre confiance,<br>
+            <strong>L'équipe DKB-Sign</strong></p>
+            <p><small>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</small></p>
+        </div>
+    </div>
+</body>
+</html>

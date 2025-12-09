@@ -1,15 +1,13 @@
 from flask import Blueprint, jsonify
-from flask_jwt_extended import jwt_required
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from app.models import User, Company, Document, Signature, Draft, Contact
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 import datetime
 
-metric_bp = Blueprint('metric_bp', __name__)
+publicapi_metric_bp = Blueprint('publicapi_metric_bp', __name__)
 
-
-@metric_bp.route('/metrics', methods=['GET'])
-@jwt_required()
+@publicapi_metric_bp.route('/metrics', methods=['GET'])
+@require_api_key
 def get_advanced_dashboard_metrics():
     """
     Endpoint pour récupérer les métriques avancées du tableau de bord de l'API de signature électronique.
@@ -126,9 +124,8 @@ def get_advanced_dashboard_metrics():
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la récupération des métriques : {str(e)}"}), 500
 
-
-@metric_bp.route('/user-metrics', methods=['GET'])
-@jwt_required()
+@publicapi_metric_bp.route('/user-metrics', methods=['GET'])
+@require_api_key
 def get_user_metrics():
     """
     Endpoint pour récupérer les métriques spécifiques à un utilisateur.
@@ -138,7 +135,7 @@ def get_user_metrics():
     - Métriques globales (cartes)
     """
     try:
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
 
         if not user:

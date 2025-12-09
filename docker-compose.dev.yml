@@ -1,0 +1,100 @@
+version: '3.8'
+
+# ==============================================================================
+# DkbSign V3 - Docker Compose Development Configuration
+# Hot-reload enabled, debug mode, exposed ports
+# ==============================================================================
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: dkbsign_db_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dkbsignv3
+      MYSQL_USER: dkbsign
+      MYSQL_PASSWORD: dkbsign123
+    volumes:
+      - mysql_data_dev:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - dkbsign_network_dev
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: dkbsign_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    networks:
+      - dkbsign_network_dev
+
+  # Flask Application (Development Mode)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: dkbsign_app_dev
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - JWT_SECRET_KEY=dev-jwt-secret-key-change-in-production
+      - DATABASE_URL=mysql+pymysql://dkbsign:dkbsign123@db:3306/dkbsignv3
+      - REDIS_URL=redis://redis:6379/0
+      - MAIL_SERVER=localhost
+      - MAIL_PORT=1025
+      - MAIL_USERNAME=dev@dkbsign.com
+      - MAIL_PASSWORD=dev
+      - MAIL_USE_TLS=False
+      - MAIL_USE_SSL=False
+      - MAIL_DEFAULT_SENDER=dev@dkbsign.com
+    volumes:
+      - .:/app
+      - /app/.venv
+      - /app/__pycache__
+    ports:
+      - "5001:5000"
+    networks:
+      - dkbsign_network_dev
+    depends_on:
+      - db
+      - redis
+    command: flask run --host=0.0.0.0 --port=5000 --reload
+
+  # MailHog (Email testing)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: dkbsign_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - dkbsign_network_dev
+
+  # Adminer (Database management)
+  adminer:
+    image: adminer:latest
+    container_name: dkbsign_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - dkbsign_network_dev
+    depends_on:
+      - db
+
+networks:
+  dkbsign_network_dev:
+    driver: bridge
+
+volumes:
+  mysql_data_dev:
+    driver: local

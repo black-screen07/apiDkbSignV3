@@ -1,12 +1,12 @@
 from flask import Blueprint, jsonify, request, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from app.models import User, Company
 import subprocess
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
 
-certificate_bp = Blueprint('certificate_bp', __name__)
+publicapi_certificate_bp = Blueprint('publicapi_certificate_bp', __name__)
 
 def run_openssl_command(command, cwd=None, input_data=None):
     """
@@ -31,15 +31,15 @@ def run_openssl_command(command, cwd=None, input_data=None):
         current_app.logger.error(f"Erreur lors de l'exécution de la commande OpenSSL: {str(e)}")
         raise
 
-@certificate_bp.route('/certificates/generate', methods=['POST'])
-@jwt_required()
+@publicapi_certificate_bp.route('/certificates/generate', methods=['POST'])
+@require_api_key
 def generate_certificate():
     """
     Génère un certificat pour l'utilisateur connecté
     """
     try:
         # Récupérer l'utilisateur
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404

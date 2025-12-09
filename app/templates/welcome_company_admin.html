@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenue sur DKB-Sign - Entreprise créée</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #6f42c1;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #6f42c1;
+            margin-bottom: 10px;
+        }
+        .welcome-title {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .highlight {
+            background-color: #f3e5f5;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #6f42c1;
+            margin: 20px 0;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #dee2e6;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+        .company-badge {
+            background-color: #6f42c1;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .admin-badge {
+            background-color: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏢 DKB-Sign</div>
+            <h1 class="welcome-title">Entreprise créée avec succès !</h1>
+        </div>
+
+        <div class="content">
+            <p>Bonjour <strong>{{ user_name }}</strong>,</p>
+            
+            <div class="success">
+                <h3>🎉 Félicitations !</h3>
+                <p>Votre entreprise a été créée avec succès sur DKB-Sign et vous êtes maintenant l'administrateur principal.</p>
+            </div>
+
+            <div class="company-badge">{{ company_name }}</div>
+            <span class="admin-badge">ADMINISTRATEUR</span>
+
+            <div class="info-box">
+                <h3>📋 Informations de votre compte :</h3>
+                <ul>
+                    <li><strong>Email :</strong> {{ email }}</li>
+                    <li><strong>Entreprise :</strong> {{ company_name }}</li>
+                    <li><strong>Rôle :</strong> Administrateur principal</li>
+                    <li><strong>Type de compte :</strong> Entreprise</li>
+                    <li><strong>Statut :</strong> Actif</li>
+                </ul>
+            </div>
+
+            <div class="highlight">
+                <h3>🚀 En tant qu'administrateur, vous pouvez :</h3>
+                <ul>
+                    <li><strong>Gérer les employés :</strong> Ajouter, modifier ou supprimer des comptes employés</li>
+                    <li><strong>Configurer les signatures :</strong> Définir les workflows et processus de signature</li>
+                    <li><strong>Superviser l'activité :</strong> Accéder aux rapports et métriques de l'entreprise</li>
+                    <li><strong>Gérer les certificats :</strong> Administrer les certificats de l'entreprise</li>
+                    <li><strong>Utiliser l'API :</strong> Intégrer DKB-Sign dans vos systèmes d'entreprise</li>
+                    <li><strong>Définir les politiques :</strong> Configurer les règles de sécurité et conformité</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h3>🔒 Responsabilités d'administrateur</h3>
+                <p>En tant qu'administrateur de <strong>{{ company_name }}</strong>, vous avez des responsabilités importantes :</p>
+                <ul>
+                    <li>Protéger les données de l'entreprise et des employés</li>
+                    <li>Gérer les accès et permissions de manière sécurisée</li>
+                    <li>Maintenir la conformité avec les réglementations</li>
+                    <li>Former les employés aux bonnes pratiques de sécurité</li>
+                    <li>Surveiller l'utilisation des services de signature</li>
+                </ul>
+            </div>
+
+            <div class="info-box">
+                <h3>📞 Prochaines étapes recommandées :</h3>
+                <ol>
+                    <li>Connectez-vous à votre compte administrateur</li>
+                    <li>Configurez les paramètres de l'entreprise</li>
+                    <li>Ajoutez vos premiers employés</li>
+                    <li>Testez les fonctionnalités de signature</li>
+                    <li>Explorez l'API pour l'intégration</li>
+                </ol>
+            </div>
+
+            <p>Si vous avez des questions ou besoin d'assistance pour configurer votre entreprise, notre équipe support est à votre disposition.</p>
+        </div>
+
+        <div class="footer">
+            <p>Merci de votre confiance,<br>
+            <strong>L'équipe DKB-Sign</strong></p>
+            <p><small>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</small></p>
+        </div>
+    </div>
+</body>
+</html>

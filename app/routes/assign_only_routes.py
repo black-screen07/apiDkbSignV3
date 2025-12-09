@@ -193,7 +193,9 @@ def assign_only():
                     urgency_message = "\n⚠️ Ce document est marqué comme TRÈS URGENT !"
                 deadline_message = f"\nDate limite de signature : {deadline_str}" if deadline else ""
 
-                if not priorities or signer_data in top_priority_signers:
+                # CORRECTION: Les contacts externes doivent TOUJOURS recevoir le lien direct avec OTP
+                # car ils n'ont pas de compte pour se connecter
+                if signer_data.get('account_type') == "external" or not priorities or signer_data in top_priority_signers:
                     sign_url = f"https://dkb-sign-ui.vercel.app/signed-docs/verify?uuid={new_signer.uuid}"
                     subject = "Veuillez signer le document"
                     if urgency != UrgencyEnum.NORMAL:
@@ -215,6 +217,7 @@ def assign_only():
                         current_year=datetime.now().year
                     )
                 else:
+                    # Notification simple (UNIQUEMENT pour les utilisateurs internes avec compte)
                     subject = "Notification de demande de signature"
                     if urgency != UrgencyEnum.NORMAL:
                         subject = f"[{urgency.upper()}] {subject}"
@@ -376,7 +379,9 @@ def download_signed_file(subfolder, filename):
 def assign_only_multiple():
     """
     Assigne des signataires à plusieurs documents, applique des modifications visuelles,
-    et envoie un seul email par signataire pour le batch.
+    envoie un seul email par signataire pour le batch avec signer_id dans le lien,
+    et met à jour le statut des documents à 'signed' si tous les signataires ont signé
+    ou si le document est une pièce jointe (sans signataire).
     """
     try:
         # 1) Récupérer l'utilisateur connecté et son entreprise
@@ -396,6 +401,7 @@ def assign_only_multiple():
         results = []
         errors = []
         signers_by_id = {}  # Dictionnaire pour regrouper les signataires par (signer_id, account_type)
+        document_signers = {}  # Dictionnaire pour suivre les signataires par document
 
         # 3) Traiter chaque document
         for doc_data in documents_data:
@@ -460,6 +466,9 @@ def assign_only_multiple():
                 db.session.flush()
                 document_id = document.id
 
+                # Initialiser la liste des signataires pour ce document
+                document_signers[document_id] = []
+
                 # 8) Ajouter l'initiateur comme premier signataire
                 initiator_signer = Signer(
                     document_id=document_id,
@@ -472,11 +481,12 @@ def assign_only_multiple():
                     notes="Initiateur du document",
                     uuid=str(uuid.uuid4()),
                     is_verified=True,
-                    batch_uuid=batch_id  # Utiliser le même batch_id que Document
+                    batch_uuid=batch_id
                 )
                 current_app.logger.info(f"Initiator Signer batch_uuid: {batch_id}")
                 db.session.add(initiator_signer)
                 db.session.flush()
+                document_signers[document_id].append(initiator_signer)
 
                 # 9) Regrouper les signataires pour l'envoi d'email unique
                 for signer_data in signers_data:
@@ -487,7 +497,7 @@ def assign_only_multiple():
                             "signer_id": signer_data.get('signer_id'),
                             "account_type": signer_data.get('account_type'),
                             "otp": otp,
-                            "batch_uuid": batch_id,  # Utiliser le même batch_id pour tous
+                            "batch_uuid": batch_id,
                             "documents": [],
                             "deadlines": [],
                             "urgencies": [],
@@ -512,8 +522,10 @@ def assign_only_multiple():
                         except (ValueError, TypeError):
                             current_app.logger.warning(f"Format de date d'échéance invalide pour le signataire {signer_data.get('signer_id')}")
                     urgency = signer_data.get('urgency', 'normal')
-                    if urgency in [UrgencyEnum.NORMAL, UrgencyEnum.URGENT, UrgencyEnum.TRES_URGENT]:
+                    if urgency in ['normal', 'urgent', 'tres_urgent']:
                         signers_by_id[signer_key]["urgencies"].append(urgency)
+                    else:
+                        current_app.logger.warning(f"Urgence invalide pour le signataire {signer_data.get('signer_id')}: {urgency}")
 
                     # Ajouter le signataire en base de données
                     new_signer = Signer(
@@ -530,10 +542,11 @@ def assign_only_multiple():
                         uuid=str(uuid.uuid4()),
                         deadline=signer_data.get('deadline'),
                         urgency=urgency,
-                        batch_uuid=batch_id  # Utiliser le même batch_id
+                        batch_uuid=batch_id
                     )
                     current_app.logger.info(f"New Signer batch_uuid for signer_id {signer_data.get('signer_id')}: {batch_id}")
                     db.session.add(new_signer)
+                    document_signers[document_id].append(new_signer)
 
                 # 10) Appliquer les modifications visuelles au PDF
                 draft_filename = f"{uuid.uuid4().hex}.pdf"
@@ -578,7 +591,25 @@ def assign_only_multiple():
                 errors.append({"document": params.get('name', 'Inconnu'), "error": f"Erreur lors du traitement : {str(e)}"})
                 continue
 
-        # 12) Envoyer un seul email par signataire
+        # 12) Vérifier et mettre à jour le statut des documents
+        for document_id, signers in document_signers.items():
+            document = Document.query.get(document_id)
+            if not document:
+                continue
+
+            # Si le document n'a pas de signataires (pièce jointe), le considérer comme signé
+            if not signers:
+                document.status = "signed"
+                current_app.logger.info(f"Document {document_id} (pièce jointe) marqué comme signé")
+                continue
+
+            # Vérifier si tous les signataires ont signé
+            all_signed = all(signer.status == "signed" for signer in Signer.query.filter_by(document_id=document_id).all())
+            if all_signed:
+                document.status = "signed"
+                current_app.logger.info(f"Document {document_id} marqué comme signé (tous les signataires ont signé)")
+
+        # 13) Envoyer un seul email par signataire
         for signer_key, signer_info in signers_by_id.items():
             try:
                 # Récupérer les informations du signataire
@@ -619,8 +650,10 @@ def assign_only_multiple():
                     urgency_message = "\n⚠️ Ce lot de documents est marqué comme TRÈS URGENT !"
                 deadline_message = f"\nDate limite de signature : {deadline_str}" if deadline else ""
 
-                if is_top_priority:
-                    sign_url = f"https://dkb-sign-ui.vercel.app/signed-docs/verify?uuid={signer_info['batch_uuid']}"
+                # CORRECTION: Les contacts externes doivent TOUJOURS recevoir le lien direct avec OTP
+                # car ils n'ont pas de compte pour se connecter
+                if signer_info["account_type"] == "external" or is_top_priority:
+                    sign_url = f"https://dkb-sign-ui.vercel.app/signed-docs/verify?batch_uuid={signer_info['batch_uuid']}&signer_id={signer_info['signer_id']}"
                     subject = f"Veuillez signer {len(signer_info['documents'])} document(s)"
                     if urgency != UrgencyEnum.NORMAL:
                         subject = f"[{urgency.upper()}] {subject}"
@@ -642,6 +675,7 @@ def assign_only_multiple():
                         current_year=datetime.now().year
                     )
                 else:
+                    # Notification simple (UNIQUEMENT pour les utilisateurs internes avec compte)
                     subject = f"Notification de demande de signature pour {len(signer_info['documents'])} document(s)"
                     if urgency != UrgencyEnum.NORMAL:
                         subject = f"[{urgency.upper()}] {subject}"
@@ -664,7 +698,7 @@ def assign_only_multiple():
                 errors.append({"signer_id": signer_info["signer_id"], "error": f"Erreur lors de l'envoi de l'email : {str(email_error)}"})
                 continue
 
-        # 13) Préparer la liste des batch_uuid pour les signataires
+        # 14) Préparer la liste des batch_uuid pour les signataires
         signers_batch_uuids = [
             {
                 "signer_id": signer_info["signer_id"],
@@ -674,7 +708,7 @@ def assign_only_multiple():
             for signer_key, signer_info in signers_by_id.items()
         ]
 
-        # 14) Valider les modifications en base de données
+        # 15) Valider les modifications en base de données
         try:
             db.session.commit()
             current_app.logger.info("Database commit successful")
@@ -683,7 +717,7 @@ def assign_only_multiple():
             current_app.logger.error(f"Database commit failed: {str(e)}")
             return jsonify({"error": f"Erreur lors de la sauvegarde : {str(e)}", "partial_results": results, "errors": errors}), 500
 
-        # 15) Retourner la réponse
+        # 16) Retourner la réponse
         return jsonify({
             "message": f"{len(results)} document(s) préparé(s) avec succès",
             "batch_id": batch_id,

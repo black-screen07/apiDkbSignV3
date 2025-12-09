@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, url_for, send_from_directory, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from app.models import Draft, Company, User, Document
 from pathlib import Path
 from app import db
@@ -10,10 +10,9 @@ import os
 from decimal import Decimal
 import logging
 
-draft_bp = Blueprint('draft_bp', __name__)
+publicapi_draft_bp = Blueprint('publicapi_draft_bp', __name__)
 
 DRAFT_FOLDER = Path("documents/drafts")
-
 
 def human_readable_size(size):
     """
@@ -97,8 +96,7 @@ def extract_pdf_metadata(file_path):
         logging.error(f"Erreur lors de l'extraction des métadonnées : {str(e)}")
         return {"error": f"Impossible d'extraire les métadonnées : {str(e)}"}
 
-
-@draft_bp.route('/documents/drafts/<path:subfolder>/<filename>', methods=['GET'])
+@publicapi_draft_bp.route('/documents/drafts/<path:subfolder>/<filename>', methods=['GET'])
 def download_file(subfolder, filename):
     """
     Endpoint pour télécharger un fichier signé en fonction du sous-dossier.
@@ -110,9 +108,8 @@ def download_file(subfolder, filename):
 
     return send_from_directory((DRAFT_FOLDER / subfolder).resolve(), filename)
 
-
-@draft_bp.route('/drafts', methods=['POST'])
-@jwt_required()
+@publicapi_draft_bp.route('/drafts', methods=['POST'])
+@require_api_key
 def save_draft():
     """
     Enregistre un brouillon avec des métadonnées enrichies, puis crée également une entrée
@@ -120,7 +117,7 @@ def save_draft():
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
 
         if not user:
@@ -173,7 +170,7 @@ def save_draft():
 
         # Générer le lien de téléchargement
         download_link = url_for(
-            'draft_bp.download_file',
+            'publicapi_draft_bp.download_file',
             subfolder=subfolder,
             filename=unique_filename,
             _external=True
@@ -196,16 +193,15 @@ def save_draft():
     except Exception as e:
         return jsonify({"error": f"Erreur lors de l'enregistrement du brouillon et du document : {str(e)}"}), 500
 
-
-@draft_bp.route('/drafts', methods=['GET'])
-@jwt_required()
+@publicapi_draft_bp.route('/drafts', methods=['GET'])
+@require_api_key
 def get_all_drafts():
     """
     Récupère la liste de tous les documents avec le statut 'drafts' appartenant à l'utilisateur connecté.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
 
         if not user:
@@ -227,7 +223,7 @@ def get_all_drafts():
                 subfolder = "unknown"
 
             download_link = url_for(
-                'draft_bp.download_file',
+                'publicapi_draft_bp.download_file',
                 subfolder=subfolder,
                 filename=Path(d.file_path).name,
                 _external=True
@@ -251,16 +247,15 @@ def get_all_drafts():
         logging.error(f"Erreur lors de la récupération des brouillons : {str(e)}")
         return jsonify({"error": f"Erreur lors de la récupération des brouillons : {str(e)}"}), 500
 
-
-@draft_bp.route('/drafts/<int:id>', methods=['GET'])
-@jwt_required()
+@publicapi_draft_bp.route('/drafts/<int:id>', methods=['GET'])
+@require_api_key
 def get_one_draft(id):
     """
     Récupère un brouillon spécifique ayant le statut 'drafts', appartenant à l'utilisateur connecté.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
 
         if not user:
@@ -282,7 +277,7 @@ def get_one_draft(id):
             subfolder = "unknown"
 
         download_link = url_for(
-            'draft_bp.download_file',
+            'publicapi_draft_bp.download_file',
             subfolder=subfolder,
             filename=Path(draft.file_path).name,
             _external=True
@@ -306,16 +301,15 @@ def get_one_draft(id):
         logging.error(f"Erreur lors de la récupération du brouillon : {str(e)}")
         return jsonify({"error": f"Erreur lors de la récupération du brouillon : {str(e)}"}), 500
 
-
-@draft_bp.route('/drafts/<int:id>', methods=['DELETE'])
-@jwt_required()
+@publicapi_draft_bp.route('/drafts/<int:id>', methods=['DELETE'])
+@require_api_key
 def delete_draft(id):
     """
     Supprime un brouillon spécifique ayant le statut 'drafts', appartenant à l'utilisateur connecté.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
 
         if not user:
@@ -346,9 +340,8 @@ def delete_draft(id):
         logging.error(f"Erreur lors de la suppression du brouillon : {str(e)}")
         return jsonify({"error": f"Erreur lors de la suppression du brouillon : {str(e)}"}), 500
 
-
-@draft_bp.route('/drafts/multiple', methods=['POST'])
-@jwt_required()
+@publicapi_draft_bp.route('/drafts/multiple', methods=['POST'])
+@require_api_key
 def save_multiple_drafts():
     """
     Enregistre plusieurs documents avec des métadonnées enrichies, un batch_id commun,
@@ -357,7 +350,7 @@ def save_multiple_drafts():
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur connecté introuvable."}), 404
@@ -434,7 +427,7 @@ def save_multiple_drafts():
         documents_response = []
         for document, unique_filename in saved_documents:
             download_link = url_for(
-                'draft_bp.download_file',
+                'publicapi_draft_bp.download_file',
                 subfolder=subfolder,
                 filename=unique_filename,
                 _external=True
@@ -464,9 +457,8 @@ def save_multiple_drafts():
         current_app.logger.error(f"Erreur lors de l'enregistrement des documents : {str(e)}", exc_info=True)
         return jsonify({"error": f"Erreur lors de l'enregistrement des documents : {str(e)}"}), 500
 
-
-@draft_bp.route('/drafts/batches', methods=['GET'])
-@jwt_required()
+@publicapi_draft_bp.route('/drafts/batches', methods=['GET'])
+@require_api_key
 def get_all_batches():
     """
     Récupère tous les dossiers (batches) de documents appartenant à l'utilisateur connecté,
@@ -474,7 +466,7 @@ def get_all_batches():
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur introuvable."}), 404
@@ -507,7 +499,7 @@ def get_all_batches():
                 }
 
             download_link = url_for(
-                'draft_bp.download_file',
+                'publicapi_draft_bp.download_file',
                 subfolder=subfolder,
                 filename=Path(document.file_path).name,
                 _external=True
@@ -532,9 +524,8 @@ def get_all_batches():
         logging.error(f"Erreur lors de la récupération des dossiers : {str(e)}")
         return jsonify({"error": f"Erreur lors de la récupération des dossiers : {str(e)}"}), 500
 
-
-@draft_bp.route('/drafts/batches/<batch_id>', methods=['GET'])
-@jwt_required()
+@publicapi_draft_bp.route('/drafts/batches/<batch_id>', methods=['GET'])
+@require_api_key
 def get_one_batch(batch_id):
     """
     Récupère un dossier spécifique (par batch_id) appartenant à l'utilisateur connecté,
@@ -542,7 +533,7 @@ def get_one_batch(batch_id):
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur introuvable."}), 404
@@ -573,7 +564,7 @@ def get_one_batch(batch_id):
 
         for document in documents:
             download_link = url_for(
-                'draft_bp.download_file',
+                'publicapi_draft_bp.download_file',
                 subfolder=subfolder,
                 filename=Path(document.file_path).name,
                 _external=True

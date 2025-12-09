@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, url_for, send_from_directory, current_app
-from flask_jwt_extended import jwt_required
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from pathlib import Path
 import uuid
 from datetime import datetime
@@ -9,22 +9,20 @@ from app.models import Document, Signer, Contact, User, db, UrgencyEnum
 from app.services.email_service import send_email
 
 # On importe ici les fonctions utilitaires partagées
-from app.utils.signature_utils import (
-    get_authenticated_user,
+from app.utils.public_signature_utils import (
     get_user_company,
     load_pdf,
     apply_optional_texts,
     apply_qr_codes,
 )
 
-assign_only_bp = Blueprint('assign_only_bp', __name__)
+publicapi_assign_only_bp = Blueprint('publicapi_assign_only_bp', __name__)
 
 # Dossiers pour les documents
 DRAFTS_FOLDER = Path("documents/drafts")
 DRAFTS_FOLDER.mkdir(parents=True, exist_ok=True)
 SIGNED_PDF_FOLDER = Path("documents/doc_signed")
 SIGNED_PDF_FOLDER.mkdir(parents=True, exist_ok=True)
-
 
 def update_assign_document(document, params, relative_file_path):
     """Version spécifique de update_existing_document pour assign_only qui ne change pas le statut"""
@@ -34,7 +32,6 @@ def update_assign_document(document, params, relative_file_path):
     updated_at = params.get("updated_at")
     if updated_at:
         document.updated_at = updated_at
-
 
 def create_assign_document(user, params, relative_file_path):
     """Version spécifique de create_new_document pour assign_only qui met le statut à pending"""
@@ -50,13 +47,12 @@ def create_assign_document(user, params, relative_file_path):
     db.session.add(new_doc)
     return new_doc
 
-
-@assign_only_bp.route('/assign-only', methods=['POST'])
-@jwt_required()
+@publicapi_assign_only_bp.route('/assign-only', methods=['POST'])
+@require_api_key
 def assign_only():
     try:
         # 1) Récupérer l'utilisateur connecté et son entreprise via les fonctions utilitaires
-        user = get_authenticated_user()
+        user = get_authenticated_user_by_api_key()
         company = get_user_company(user)
 
         # 2) Récupérer les données du formulaire
@@ -281,8 +277,7 @@ def assign_only():
         db.session.rollback()
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
 
-
-@assign_only_bp.route('/check-signer-account-type', methods=['GET'])
+@publicapi_assign_only_bp.route('/check-signer-account-type', methods=['GET'])
 def check_signer_type():
     try:
         uuid_val = request.args.get('uuid')
@@ -299,8 +294,7 @@ def check_signer_type():
         current_app.logger.error(f"Erreur lors de la vérification du type de signataire : {str(e)}")
         return jsonify({"error": f"Une erreur est survenue lors de la vérification : {str(e)}"}), 500
 
-
-@assign_only_bp.route('/documents/drafts/<path:subfolder>/<filename>', methods=['GET'])
+@publicapi_assign_only_bp.route('/documents/drafts/<path:subfolder>/<filename>', methods=['GET'])
 def get_draft_document(subfolder, filename):
     try:
         file_path = DRAFTS_FOLDER / subfolder / filename
@@ -311,12 +305,11 @@ def get_draft_document(subfolder, filename):
         current_app.logger.error(f"Erreur lors de l'accès au document : {str(e)}")
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
 
-
-@assign_only_bp.route('/documents/<int:document_id>/download')
-@jwt_required()
+@publicapi_assign_only_bp.route('/documents/<int:document_id>/download')
+@require_api_key
 def download_document(document_id):
     try:
-        user = get_authenticated_user()
+        user = get_authenticated_user_by_api_key()
         document = Document.query.get(document_id)
         if not document:
             return jsonify({"error": "Document non trouvé"}), 404
@@ -337,12 +330,11 @@ def download_document(document_id):
         current_app.logger.error(f"Erreur lors du téléchargement : {str(e)}", exc_info=True)
         return jsonify({"error": "Erreur lors du téléchargement"}), 500
 
-
-@assign_only_bp.route('/documents/<int:document_id>/view')
-@jwt_required()
+@publicapi_assign_only_bp.route('/documents/<int:document_id>/view')
+@require_api_key
 def view_document(document_id):
     try:
-        user = get_authenticated_user()
+        user = get_authenticated_user_by_api_key()
         document = Document.query.get(document_id)
         if not document:
             return jsonify({"error": "Document non trouvé"}), 404
@@ -362,17 +354,15 @@ def view_document(document_id):
         current_app.logger.error(f"Erreur lors de l'affichage : {str(e)}", exc_info=True)
         return jsonify({"error": "Erreur lors de l'affichage"}), 500
 
-
-@assign_only_bp.route('/documents/doc_signed/<path:subfolder>/<filename>', methods=['GET'])
+@publicapi_assign_only_bp.route('/documents/doc_signed/<path:subfolder>/<filename>', methods=['GET'])
 def download_signed_file(subfolder, filename):
     file_path = SIGNED_PDF_FOLDER / subfolder / filename
     if not file_path.exists():
         return jsonify({"error": "Fichier introuvable."}), 404
     return send_from_directory((SIGNED_PDF_FOLDER / subfolder).resolve(), filename)
 
-
-@assign_only_bp.route('/assign-only-multiple', methods=['POST'])
-@jwt_required()
+@publicapi_assign_only_bp.route('/assign-only-multiple', methods=['POST'])
+@require_api_key
 def assign_only_multiple():
     """
     Assigne des signataires à plusieurs documents, applique des modifications visuelles,
@@ -380,7 +370,7 @@ def assign_only_multiple():
     """
     try:
         # 1) Récupérer l'utilisateur connecté et son entreprise
-        user = get_authenticated_user()
+        user = get_authenticated_user_by_api_key()
         company = get_user_company(user)
 
         # 2) Récupérer les données du formulaire

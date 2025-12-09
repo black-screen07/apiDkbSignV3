@@ -238,6 +238,7 @@ def parse_request_content(request):
 def load_signature_image(user):
     """
     Charge l'image de signature en fonction de 'current_img_sign'.
+    Convertit en RGBA pour préserver la transparence (PyHanko supporte RGBA).
     """
     if user.current_img_sign == "img":
         signature_path = Path(user.img_sign_path)
@@ -251,7 +252,22 @@ def load_signature_image(user):
     if not signature_path.exists():
         raise FileNotFoundError(f"Image de signature introuvable : {signature_path}")
 
-    return Image.open(signature_path)
+    img = Image.open(signature_path)
+    
+    # Convertir en RGBA pour garder la transparence (PyHanko supporte RGBA)
+    # Ne PAS convertir en RGB car ça cache le texte du PDF en dessous
+    if img.mode == 'P':
+        # Convertir les images avec palette en RGBA
+        img = img.convert('RGBA')
+    elif img.mode in ('L', 'LA'):
+        # Convertir niveaux de gris en RGBA
+        img = img.convert('RGBA')
+    elif img.mode == 'RGB':
+        # Ajouter un canal alpha aux images RGB (opaque)
+        img = img.convert('RGBA')
+    # Si déjà RGBA, ne rien faire
+    
+    return img
 
 
 def load_pdf(file, file_url):
@@ -468,10 +484,17 @@ def generate_qr_code_image(
 
 def update_signature_volumes(user, company, count):
     if user.account_type == "individual":
+        # Utilisateur individuel : décompte dans la table user
         user.signature_volume_used += count
     elif user.account_type == "employee" and company:
-        user.signature_volume_used += count
-        company.signature_volume_used += count
+        # Utilisateur employé : vérifier le cert_type de l'entreprise
+        if company.cert_type == CertTypeEnum.CACHET_SERVEUR:
+            # Cachet serveur : décompte UNIQUEMENT dans la table company
+            company.signature_volume_used += count
+        else:
+            # Personne physique : décompte dans les deux tables (logique actuelle)
+            user.signature_volume_used += count
+            company.signature_volume_used += count
 
 
 def get_authenticated_user():
@@ -495,10 +518,22 @@ def get_user_company(user):
 
 def validate_signature_volumes(user, company):
     """Vérifie que l'utilisateur (et son entreprise) disposent d'un volume de signature suffisant."""
-    if user.account_type == "individual" and user.signature_volume_used >= user.signature_volume:
-        raise Exception("Votre volume de signatures est épuisé. Veuillez recharger votre compte.")
-    if company and company.signature_volume_used >= company.signature_volume:
-        raise Exception("Le volume de signatures de l'entreprise est épuisé. Veuillez contacter l'administrateur.")
+    if user.account_type == "individual":
+        # Utilisateur individuel : vérifier uniquement son volume personnel
+        if user.signature_volume_used >= user.signature_volume:
+            raise Exception("Votre volume de signatures est épuisé. Veuillez recharger votre compte.")
+    elif user.account_type == "employee" and company:
+        # Utilisateur employé : vérifier selon le cert_type de l'entreprise
+        if company.cert_type == CertTypeEnum.CACHET_SERVEUR:
+            # Cachet serveur : vérifier UNIQUEMENT le volume de l'entreprise
+            if company.signature_volume_used >= company.signature_volume:
+                raise Exception("Le volume de signatures de l'entreprise est épuisé. Veuillez contacter l'administrateur.")
+        else:
+            # Personne physique : vérifier les deux volumes (logique actuelle)
+            if user.signature_volume_used >= user.signature_volume:
+                raise Exception("Votre volume de signatures est épuisé. Veuillez contacter l'administrateur.")
+            if company.signature_volume_used >= company.signature_volume:
+                raise Exception("Le volume de signatures de l'entreprise est épuisé. Veuillez contacter l'administrateur.")
 
 
 def validate_signature_params(params):

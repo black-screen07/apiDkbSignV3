@@ -45,14 +45,23 @@ def create_contact():
                 return jsonify({"error": "Aucune entreprise associée à cet employé."}), 400
             company_id = user.company_id
 
-        # Vérifier si l'email existe déjà pour l'utilisateur ou l'entreprise
-        existing_contact = Contact.query.filter(
-            (Contact.email == email) &
-            ((Contact.user_id == user.id) | (Contact.company_id == company_id))
-        ).first()
+        # Vérifier si l'email existe déjà POUR CE CONTEXTE SPÉCIFIQUE
+        # Un même email peut exister pour différents utilisateurs/entreprises
+        if company_id:
+            # Pour un employé : vérifier uniquement dans les contacts de l'entreprise
+            existing_contact = Contact.query.filter(
+                Contact.email == email,
+                Contact.company_id == company_id
+            ).first()
+        else:
+            # Pour un utilisateur individuel : vérifier uniquement dans ses contacts personnels
+            existing_contact = Contact.query.filter(
+                Contact.email == email,
+                Contact.user_id == user.id
+            ).first()
 
         if existing_contact:
-            return jsonify({"error": "L'email fourni est déjà utilisé pour un autre contact."}), 400
+            return jsonify({"error": "Ce contact existe déjà dans votre liste."}), 400
 
         # Créer le contact avec account_type 'external' car c'est un contact simple
         new_contact = Contact(
@@ -347,12 +356,21 @@ def add_user_contact(user_id):
         if not user_to_add:
             return jsonify({"error": "Utilisateur à ajouter introuvable."}), 404
 
-        # Vérifier si le contact existe déjà
-        existing_contact = Contact.query.filter(
-            (Contact.email == user_to_add.email) &
-            ((Contact.user_id == current_user.id) | 
-             (current_user.account_type == 'employee' and Contact.company_id == current_user.company_id))
-        ).first()
+        # Vérifier si le contact existe déjà POUR CE CONTEXTE SPÉCIFIQUE
+        company_id = current_user.company_id if current_user.account_type == 'employee' else None
+        
+        if company_id:
+            # Pour un employé : vérifier dans les contacts de l'entreprise
+            existing_contact = Contact.query.filter(
+                Contact.email == user_to_add.email,
+                Contact.company_id == company_id
+            ).first()
+        else:
+            # Pour un utilisateur individuel : vérifier dans ses contacts personnels
+            existing_contact = Contact.query.filter(
+                Contact.email == user_to_add.email,
+                Contact.user_id == current_user.id
+            ).first()
 
         if existing_contact:
             return jsonify({"error": "Cet utilisateur est déjà dans vos contacts."}), 400

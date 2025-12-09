@@ -106,7 +106,7 @@ def sign_pdf():
 
 
 @signature_bp.route('/sign-pdfs', methods=['POST'])
-@jwt_required()
+#@jwt_required()
 def sign_multiple_pdfs():
     """
     Point d'entrée pour la signature de plusieurs PDFs via JSON.

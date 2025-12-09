@@ -1,0 +1,36 @@
+# docker-compose.yml
+version: '3.9'
+
+services:
+  flask:
+    build: .
+    container_name: flask_app
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      # Tu mettras toutes tes variables juste après ↓
+    env_file:
+      - .env              # ← toutes tes variables secrètes ici
+    volumes:
+      - ./logs:/app/logs  # optionnel : si tu crées un dossier logs
+    depends_on:
+      - mysql
+    ports:
+      - "5000:5000"       # ← tu accèderas à http://ton-ip:5000
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ton_root_password_tres_secret
+      MYSQL_DATABASE: nom_de_ta_base
+      MYSQL_USER: ton_user
+      MYSQL_PASSWORD: ton_password_secret
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"       # optionnel, tu peux enlever si tu veux pas accéder de l’extérieur
+
+volumes:
+  mysql-data:

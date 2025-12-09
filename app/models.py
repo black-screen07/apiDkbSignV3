@@ -72,6 +72,11 @@ class User(db.Model):
     archived = db.Column(db.Boolean, nullable=True, default=False)
     pin_code = db.Column(db.String(4))  # Code PIN pour la signature
     pin_created_at = db.Column(db.DateTime)  # Date de création du PIN
+    
+    # Champs pour l'authentification par API key (Public API)
+    api_key = db.Column(db.String(64), unique=True, nullable=True)  # Clé API pour l'authentification
+    api_key_created_at = db.Column(db.DateTime, nullable=True)  # Date de création de la clé API
+    api_key_active = db.Column(db.Boolean, default=True, nullable=True)  # Statut de la clé API
 
     # Relation avec les certificats et les documents signés
     certificates = db.relationship('Certificate', backref='user', lazy=True)
@@ -95,6 +100,27 @@ class User(db.Model):
             return False, "Code PIN invalide."
             
         return True, "Code PIN valide."
+    
+    def generate_api_key(self):
+        """
+        Génère une nouvelle clé API pour l'utilisateur.
+        """
+        self.api_key = secrets.token_urlsafe(48)  # Génère une clé de 64 caractères
+        self.api_key_created_at = datetime.utcnow()
+        self.api_key_active = True
+        return self.api_key
+    
+    def deactivate_api_key(self):
+        """
+        Désactive la clé API actuelle de l'utilisateur.
+        """
+        self.api_key_active = False
+    
+    def is_api_key_valid(self):
+        """
+        Vérifie si la clé API de l'utilisateur est valide et active.
+        """
+        return self.api_key and self.api_key_active
 
 
 class Certificate(db.Model):
@@ -223,12 +249,6 @@ class Contact(db.Model):
     user_account_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Lien vers le compte DKB-Sign associé
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Date de création
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Date de mise à jour
-
-    # Contraintes d'unicité par utilisateur ou entreprise
-    __table_args__ = (
-        db.UniqueConstraint('email', 'user_id', name='unique_email_per_user'),
-        db.UniqueConstraint('email', 'company_id', name='unique_email_per_company'),
-    )
 
     # Relations avec l'utilisateur propriétaire et l'entreprise
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('owned_contacts', lazy=True))

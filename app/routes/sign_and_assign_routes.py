@@ -434,8 +434,10 @@ def sign_pdf():
                 return jsonify({"error": "Erreur de base de données lors de l'ajout d'un signataire."}), 500
 
             # Envoi d'email
-            if not priorities or signer_info in top_priority_signers:
-                # Email avec OTP
+            # CORRECTION: Les contacts externes doivent TOUJOURS recevoir le lien direct avec OTP
+            # car ils n'ont pas de compte pour se connecter
+            if account_type == "external" or not priorities or signer_info in top_priority_signers:
+                # Email avec lien direct + OTP (pour contacts externes et signataires prioritaires)
                 sign_url = f"https://dkb-sign-ui.vercel.app/signed-docs/verify?uuid={new_signer.uuid}"
                 subject = "Veuillez signer le document"
                 
@@ -464,7 +466,7 @@ def sign_pdf():
                 )
 
             else:
-                # Notification simple
+                # Notification simple (UNIQUEMENT pour les utilisateurs internes avec compte)
                 subject = "Notification de demande de signature"
                 body = (
                     f"Bonjour {name},\n\n"
@@ -805,12 +807,23 @@ def sign_document():
         if not user_acc:
             return jsonify({"error": "Utilisateur ou contact introuvable."}), 404
 
+        # CORRECTION: Vérifier si le contact externe a un compte associé
+        is_external_with_account = False
+        if current_signer.account_type == "external" and hasattr(user_acc, 'user_account_id') and user_acc.user_account_id:
+            # Ce contact a un compte utilisateur associé, utiliser ce compte pour la signature
+            associated_user = User.query.get(user_acc.user_account_id)
+            if associated_user:
+                current_app.logger.info(f"Contact externe {user_acc.email} a un compte associé (User ID: {associated_user.id})")
+                user_acc = associated_user
+                is_external_with_account = True
+
         company = None
         if hasattr(user_acc, 'company_id') and user_acc.company_id:
             company = Company.query.get(user_acc.company_id)
 
         # Chargement de l'image de signature
-        if current_signer.account_type == "external":
+        if current_signer.account_type == "external" and not is_external_with_account:
+            # Contact externe sans compte associé: demander l'upload de l'image
             if 'signature_image' not in request.files:
                 return jsonify({"error": "Le fichier 'signature_image' est obligatoire pour un signataire externe."}), 400
             file_img = request.files['signature_image']
@@ -820,6 +833,7 @@ def sign_document():
                 file_img.save(tmp_file.name)
                 signer_stamp_path = tmp_file.name
         else:
+            # Utilisateur avec compte (ou contact avec compte associé): utiliser l'image de signature du compte
             signer_stamp = load_signature_image(user_acc)
             if not signer_stamp:
                 return jsonify({"error": "Image de signature introuvable."}), 400
@@ -984,9 +998,12 @@ def sign_document():
                             )
                             send_whatsapp_notification(clean_phone, whatsapp_message)
 
-        # Suppression du fichier temporaire pour un signataire externe
-        if current_signer.account_type == "external":
-            os.remove(signer_stamp_path)
+        # Suppression du fichier temporaire pour un signataire externe sans compte
+        if current_signer.account_type == "external" and not is_external_with_account:
+            try:
+                os.remove(signer_stamp_path)
+            except Exception as e:
+                current_app.logger.warning(f"Impossible de supprimer le fichier temporaire: {str(e)}")
 
         full_signed_pdf_url = url_for(
             'sign_and_assign_bp.download_file',
@@ -1008,6 +1025,8 @@ def sign_document():
 def sign_document_multiple():
     """
     Endpoint pour un signataire (interne ou externe) qui signe plusieurs documents en circulation associés à un batch_uuid.
+    Marque les pièces jointes (documents avec une seule entrée dans signers et status='prepared') comme 'signed' après que
+    tous les signataires des documents normaux du batch ont signé.
     """
     try:
         signer_id = request.form.get('signer_id')
@@ -1091,12 +1110,23 @@ def sign_document_multiple():
                     errors.append({"document_id": document.id, "error": "Utilisateur ou contact introuvable."})
                     continue
 
+                # CORRECTION: Vérifier si le contact externe a un compte associé
+                is_external_with_account = False
+                if current_signer.account_type == "external" and hasattr(user_acc, 'user_account_id') and user_acc.user_account_id:
+                    # Ce contact a un compte utilisateur associé, utiliser ce compte pour la signature
+                    associated_user = User.query.get(user_acc.user_account_id)
+                    if associated_user:
+                        current_app.logger.info(f"Contact externe {user_acc.email} a un compte associé (User ID: {associated_user.id})")
+                        user_acc = associated_user
+                        is_external_with_account = True
+
                 company = None
                 if hasattr(user_acc, 'company_id') and user_acc.company_id:
                     company = Company.query.get(user_acc.company_id)
 
                 # Chargement de l'image de signature
-                if current_signer.account_type == "external":
+                if current_signer.account_type == "external" and not is_external_with_account:
+                    # Contact externe sans compte associé: demander l'upload de l'image
                     if 'signature_image' not in request.files:
                         errors.append({
                             "document_id": document.id,
@@ -1111,6 +1141,7 @@ def sign_document_multiple():
                         file_img.save(tmp_file.name)
                         signer_stamp_path = tmp_file.name
                 else:
+                    # Utilisateur avec compte (ou contact avec compte associé): utiliser l'image de signature du compte
                     signer_stamp = load_signature_image(user_acc)
                     if not signer_stamp:
                         errors.append({"document_id": document.id, "error": "Image de signature introuvable."})
@@ -1292,14 +1323,62 @@ def sign_document_multiple():
                     "doc_signed": final_signed_pdf_url
                 })
 
-                # Suppression du fichier temporaire pour un signataire externe
-                if current_signer.account_type == "external":
-                    os.remove(signer_stamp_path)
+                # Suppression du fichier temporaire pour un signataire externe sans compte
+                if current_signer.account_type == "external" and not is_external_with_account:
+                    try:
+                        os.remove(signer_stamp_path)
+                    except Exception as e:
+                        current_app.logger.warning(f"Impossible de supprimer le fichier temporaire: {str(e)}")
 
             except Exception as e:
                 current_app.logger.error(f"Error processing document_id {document.id}: {str(e)}", exc_info=True)
                 errors.append({"document_id": document.id, "error": f"Erreur lors de la signature : {str(e)}"})
                 continue
+
+        # Vérifier et mettre à jour les pièces jointes
+        # Étape 1 : Identifier les documents normaux et les pièces jointes
+        from sqlalchemy import func
+        all_batch_documents = Document.query.filter_by(batch_id=batch_uuid).all()
+        document_signer_counts = {}
+        signer_counts_query = db.session.query(
+            Signer.document_id,
+            func.count(Signer.id).label('signer_count'),
+            func.min(Signer.status).label('status')
+        ).filter(Signer.batch_uuid == batch_uuid).group_by(Signer.document_id).all()
+        for row in signer_counts_query:
+            document_signer_counts[row.document_id] = {
+                "signer_count": row.signer_count,
+                "is_attachment": row.signer_count == 1 and row.status == "prepared"
+            }
+
+        # Étape 2 : Vérifier si tous les signataires des documents normaux ont signé
+        all_normal_docs_signed = True
+        for document in all_batch_documents:
+            if document.id not in document_signer_counts:
+                continue  # Document sans signataire, ignorer
+            info = document_signer_counts[document.id]
+            if not info["is_attachment"]:  # Document normal
+                all_signers = Signer.query.filter_by(document_id=document.id).all()
+                if not all(s.status == "signed" for s in all_signers if s.priority != 0):  # Ignorer l'initiateur
+                    all_normal_docs_signed = False
+                    break
+
+        # Étape 3 : Si tous les signataires des documents normaux ont signé, marquer les pièces jointes comme signées
+        if all_normal_docs_signed:
+            for document in all_batch_documents:
+                if document.id in document_signer_counts and document_signer_counts[document.id]["is_attachment"]:
+                    document.status = "signed"
+                    document.signed_file_path = document.file_path
+                    current_app.logger.info(f"Pièce jointe {document.id} (nom: {document.name}) marquée comme signée pour batch {batch_uuid}")
+
+        # Étape 4 : Cas spécial - Batch avec uniquement des pièces jointes
+        if all(info["is_attachment"] for info in document_signer_counts.values()):
+            current_app.logger.info(f"Le batch {batch_uuid} ne contient que des pièces jointes")
+            for document in all_batch_documents:
+                if document.id in document_signer_counts and document_signer_counts[document.id]["is_attachment"]:
+                    document.status = "signed"
+                    document.signed_file_path = document.file_path
+                    current_app.logger.info(f"Pièce jointe {document.id} (nom: {document.name}) marquée comme signée (batch uniquement pièces jointes)")
 
         # Valider les modifications en base de données
         try:

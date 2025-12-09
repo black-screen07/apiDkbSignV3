@@ -49,7 +49,9 @@ def create_app():
     from app.routes.flow_routes import flow_bp
     from app.routes.flow_signature_routes import flow_signature_bp
     from app.routes.certificate_routes import certificate_bp
+    from app.routes.health_routes import health_bp
 
+    app.register_blueprint(health_bp)  # No prefix for health endpoints
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(signature_bp, url_prefix='/signatures')
     app.register_blueprint(sign_and_assign_bp, url_prefix='/signatures')
@@ -66,5 +68,37 @@ def create_app():
     app.register_blueprint(flow_bp, url_prefix='/')
     app.register_blueprint(flow_signature_bp, url_prefix='/')
     app.register_blueprint(certificate_bp, url_prefix='/')
+
+    # Importer et enregistrer les Blueprints public API
+    from app.routes.publicapi.signature_routes import publicapi_signature_bp
+    from app.routes.publicapi.sign_and_assign_routes import publicapi_sign_and_assign_bp
+    from app.routes.publicapi.assign_only_routes import publicapi_assign_only_bp
+    from app.routes.publicapi.user_routes import publicapi_user_bp
+    from app.routes.publicapi.document_routes import publicapi_document_bp
+    from app.routes.publicapi.draft_routes import publicapi_draft_bp
+    from app.routes.publicapi.email_routes import publicapi_email_bp
+    from app.routes.publicapi.metric_routes import publicapi_metric_bp
+    from app.routes.publicapi.consent_routes import publicapi_consent_bp
+    from app.routes.publicapi.workflow_routes import publicapi_workflow_bp
+    from app.routes.publicapi.flow_routes import publicapi_flow_bp
+    from app.routes.publicapi.flow_signature_routes import publicapi_flow_signature_bp
+    from app.routes.publicapi.certificate_routes import publicapi_certificate_bp
+    from app.routes.publicapi.user_registration_routes import publicapi_user_registration_bp
+
+    app.register_blueprint(publicapi_signature_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_sign_and_assign_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_assign_only_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_user_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_document_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_draft_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_email_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_metric_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_consent_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_workflow_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_flow_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_flow_signature_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_certificate_bp, url_prefix='/v3')
+    app.register_blueprint(publicapi_user_registration_bp, url_prefix='/v3/auth')
+
 
     return app

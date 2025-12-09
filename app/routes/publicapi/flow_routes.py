@@ -1,22 +1,21 @@
 from flask import Blueprint, jsonify, url_for, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.api_auth_utils import require_api_key, get_authenticated_user_by_api_key
 from app.models import db, Flow, LineFlow, User, Contact, Company, Document, Workflow
 from datetime import datetime
 import os
 from sqlalchemy import or_, desc, asc
 
-flow_bp = Blueprint('flow_bp', __name__)
+publicapi_flow_bp = Blueprint('publicapi_flow_bp', __name__)
 
-
-@flow_bp.route('/flows/<int:flow_id>', methods=['GET'])
-@jwt_required()
+@publicapi_flow_bp.route('/flows/<int:flow_id>', methods=['GET'])
+@require_api_key
 def get_flow(flow_id):
     """
     Récupère les détails complets d'un flow avec ses participants et le document associé.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
@@ -145,16 +144,15 @@ def get_flow(flow_id):
     except Exception as e:
         return jsonify({"error": f"Une erreur est survenue: {str(e)}"}), 500
 
-
-@flow_bp.route('/flows', methods=['GET'])
-@jwt_required()
+@publicapi_flow_bp.route('/flows', methods=['GET'])
+@require_api_key
 def get_participant_flows():
     """
     Liste tous les flows où l'utilisateur connecté est participant.
     """
     try:
         # Récupérer l'utilisateur connecté
-        current_user_email = get_jwt_identity()
+        current_user_email = get_authenticated_user_by_api_key().email
         user = User.query.filter_by(email=current_user_email).first()
         if not user:
             return jsonify({"error": "Utilisateur non trouvé"}), 404
