@@ -14,8 +14,8 @@ COPY . .
 EXPOSE 5000
 
 # Commande de démarrage (adapte si tu utilises gunicorn ou autre)
-CMD ["python", "app.py"]
+#CMD ["python", "run.py"]
 # ou si ton fichier principal s'appelle autrement :
 # CMD ["python", "main.py"]
 # ou avec gunicorn (recommandé en prod) :
-# CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "run:app"]
