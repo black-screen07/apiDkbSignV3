@@ -229,7 +229,9 @@ def sign_upload_multiple_documents():
             "name": "Nom du signataire",
             "firstname": "Prénom", 
             "function": "Fonction",
-            "signature_image": "nom_fichier_signature.png"
+            "email": "signataire@example.com",
+            "signature_image": "nom_fichier_signature.png",
+            "use_stored_signature": true  # Si true, cherche l'image dans le dossier par email
         }
     ]
     
@@ -321,8 +323,53 @@ def sign_upload_multiple_documents():
         # 6. Récupération et chargement immédiat des images de signature pour chaque signataire
         signature_images = {}  # Stockera des objets PIL Image, pas des FileStorage
         
-        # Première méthode : récupération par index (signature_image_0, signature_image_1, etc.)
+        # Fonction helper pour charger une signature stockée
+        def load_stored_signature(email):
+            """Charge une signature stockée depuis le dossier externe par email."""
+            try:
+                from app.routes.publicapi.external_signatures_routes import (
+                    get_signature_folder_for_email, 
+                    ALLOWED_EXTENSIONS
+                )
+                signature_folder = get_signature_folder_for_email(email)
+                
+                # Chercher le fichier de signature
+                for ext in ALLOWED_EXTENSIONS:
+                    signature_file = signature_folder / f"signature.{ext}"
+                    if signature_file.exists():
+                        sig_image = Image.open(signature_file)
+                        if sig_image.mode != 'RGBA':
+                            sig_image = sig_image.convert('RGBA')
+                        current_app.logger.info(f"✅ Signature chargée depuis le dossier pour {email}: {signature_file}")
+                        return sig_image
+                
+                current_app.logger.warning(f"⚠️ Aucune signature stockée trouvée pour {email}")
+                return None
+            except Exception as e:
+                current_app.logger.error(f"❌ Erreur lors du chargement de la signature stockée pour {email}: {str(e)}")
+                return None
+        
+        # Première méthode : vérifier si use_stored_signature est activé
         for i, signer in enumerate(signers_data):
+            # Vérifier explicitement que use_stored_signature est présent et True
+            use_stored = signer.get('use_stored_signature')
+            signer_email = signer.get('email')
+            
+            # Ne charger que si explicitement demandé (True) et email fourni
+            if use_stored is True and signer_email:
+                # Charger depuis le dossier de signatures stockées
+                stored_sig = load_stored_signature(signer_email)
+                if stored_sig:
+                    signature_images[i] = stored_sig
+                    log_image_info(i, stored_sig, f"Chargée depuis dossier stocké pour {signer_email}")
+                    continue  # Passer au signataire suivant
+        
+        # Deuxième méthode : récupération par index (signature_image_0, signature_image_1, etc.)
+        for i, signer in enumerate(signers_data):
+            # Sauter si déjà chargée depuis le dossier stocké
+            if i in signature_images:
+                continue
+                
             image_key = f'signature_image_{i}'
             if image_key in request.files:
                 sig_file = request.files[image_key]
@@ -351,9 +398,13 @@ def sign_upload_multiple_documents():
                     except Exception as e:
                         log_error(e, f"Chargement image signataire {i} (clé '{image_key}')", traceback.format_exc())
         
-        # Deuxième méthode : recherche par nom de fichier (fallback)
+        # Troisième méthode : recherche par nom de fichier (fallback)
         for i, signer in enumerate(signers_data):
-            if i not in signature_images and 'signature_image' in signer:
+            # Sauter si déjà chargée
+            if i in signature_images:
+                continue
+            
+            if 'signature_image' in signer:
                 # Rechercher par nom de fichier
                 for key, file in request.files.items():
                     if key.startswith('signature_image_') and file.filename == signer['signature_image']:

@@ -84,6 +84,7 @@ def create_app():
     from app.routes.publicapi.flow_signature_routes import publicapi_flow_signature_bp
     from app.routes.publicapi.certificate_routes import publicapi_certificate_bp
     from app.routes.publicapi.user_registration_routes import publicapi_user_registration_bp
+    from app.routes.publicapi.external_signatures_routes import publicapi_external_signatures_bp
 
     app.register_blueprint(publicapi_signature_bp, url_prefix='/v3')
     app.register_blueprint(publicapi_sign_and_assign_bp, url_prefix='/v3')
@@ -99,6 +100,7 @@ def create_app():
     app.register_blueprint(publicapi_flow_signature_bp, url_prefix='/v3')
     app.register_blueprint(publicapi_certificate_bp, url_prefix='/v3')
     app.register_blueprint(publicapi_user_registration_bp, url_prefix='/v3/auth')
+    app.register_blueprint(publicapi_external_signatures_bp, url_prefix='/v3')
 
 
     return app

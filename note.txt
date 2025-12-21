@@ -1,0 +1,13 @@
+curl --location 'http://127.0.0.1:5000/auth/login' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "email": "admin2@cienergies.com",
+    "password": "@ess1234#Dkbsign@"
+}'
+
+
+curl --location --request POST 'http://127.0.0.1:5000/auth/generate-app-key' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc2NTQwMTgxMywianRpIjoiNDZmYzllY2MtYzQ3My00ODI1LTlmMGMtZjYzYTM3NzMwYTg2IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6ImFkbWluMkBjaWVuZXJnaWVzLmNvbSIsIm5iZiI6MTc2NTQwMTgxMywiY3NyZiI6IjQ1NmI4N2MwLWQxZWMtNDhlYS1iMjg5LThiZWZlNTlhYTQyOCIsImV4cCI6MTc2NTQzNzgxM30.MeOKnfNHAgXMh_70SCdM-bXBwKzvCwVN1_o3IgxE3to'
+
+
+iZT9h_VC-xvMYhKLSx0AFJb99FS6TFQdr8L9fbldq0ATmsE5Ew8WzSiQiBD5iULE
