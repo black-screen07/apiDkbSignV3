@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -50,8 +50,12 @@ def create_app():
     from app.routes.flow_signature_routes import flow_signature_bp
     from app.routes.certificate_routes import certificate_bp
     from app.routes.health_routes import health_bp
+    # NOTE: Système de proof temporairement désactivé en prod (BD non migrée).
+    # Ré-activer cet import et l'enregistrement du blueprint une fois la migration appliquée.
+    # from app.routes.proof_routes import proof_bp
 
     app.register_blueprint(health_bp)  # No prefix for health endpoints
+    # app.register_blueprint(proof_bp, url_prefix='/')
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(signature_bp, url_prefix='/signatures')
     app.register_blueprint(sign_and_assign_bp, url_prefix='/signatures')
@@ -85,6 +89,9 @@ def create_app():
     from app.routes.publicapi.certificate_routes import publicapi_certificate_bp
     from app.routes.publicapi.user_registration_routes import publicapi_user_registration_bp
     from app.routes.publicapi.external_signatures_routes import publicapi_external_signatures_bp
+    # NOTE: Système de proof temporairement désactivé en prod (BD non migrée).
+    # Ré-activer cet import et l'enregistrement du blueprint une fois la migration appliquée.
+    # from app.routes.publicapi.proof_routes import publicapi_proof_bp
 
     app.register_blueprint(publicapi_signature_bp, url_prefix='/v3')
     app.register_blueprint(publicapi_sign_and_assign_bp, url_prefix='/v3')
@@ -101,6 +108,6 @@ def create_app():
     app.register_blueprint(publicapi_certificate_bp, url_prefix='/v3')
     app.register_blueprint(publicapi_user_registration_bp, url_prefix='/v3/auth')
     app.register_blueprint(publicapi_external_signatures_bp, url_prefix='/v3')
-
+    # app.register_blueprint(publicapi_proof_bp, url_prefix='/v3')
 
     return app

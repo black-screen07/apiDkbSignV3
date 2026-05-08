@@ -38,18 +38,18 @@ def request_consent():
     db.session.commit()
 
     # Envoyer l'OTP par email
-    subject = "Confirmation de consentement"
-    body = f"Bonjour {user.name},\n\nVoici votre code de confirmation : {consent.otp_code}\nVeuillez le saisir pour confirmer votre consentement."
+    subject = "Consent Confirmation"
+    body = f"Hello {user.name},\n\nHere is your confirmation code: {consent.otp_code}\nPlease enter it to confirm your consent."
     html = f"""
-    <p>Bonjour {user.name},</p>
-    <p>Veuillez utiliser ce code pour confirmer votre consentement :</p>
+    <p>Hello {user.name},</p>
+    <p>Please use this code to confirm your consent:</p>
     <h2>{consent.otp_code}</h2>
-    <p>Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>
+    <p>If you did not request this, please ignore this message.</p>
     """
     send_email(subject, user.email, body, html)
 
     return jsonify({
-        "message": "Consentement créé, un OTP a été envoyé.",
+        "message": "Consent created, an OTP has been sent.",
         "consent_id": consent.id
     }), 201
 
@@ -155,18 +155,18 @@ def request_consents():
         db.session.commit()
 
         # Envoyer l'OTP par email
-        subject = "Confirmation de consentement"
-        body = f"Bonjour {user.name},\n\nVoici votre code de confirmation : {otp_code}\nVeuillez le saisir pour confirmer votre consentement."
+        subject = "Consent Confirmation"
+        body = f"Hello {user.name},\n\nHere is your confirmation code: {otp_code}\nPlease enter it to confirm your consent."
         html = f"""
-        <p>Bonjour {user.name},</p>
-        <p>Veuillez utiliser ce code pour confirmer votre consentement :</p>
+        <p>Hello {user.name},</p>
+        <p>Please use this code to confirm your consent:</p>
         <h2>{otp_code}</h2>
-        <p>Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>
+        <p>If you did not request this, please ignore this message.</p>
         """
         send_email(subject, user.email, body, html)
 
         return jsonify({
-            "message": "Consentements créés, un OTP a été envoyé.",
+            "message": "Consents created, an OTP has been sent.",
             "batch_id": batch_id,
             "consent_ids": [consent.id for consent in consents]
         }), 201

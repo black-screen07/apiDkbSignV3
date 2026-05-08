@@ -24,6 +24,7 @@ from app.utils.signature_utils import (
     update_document_record
 )
 from app.models import db
+from app.services.signature_proof_service import create_signature_proof, build_proof_urls
 
 signature_bp = Blueprint('signature_bp', __name__)
 
@@ -85,7 +86,14 @@ def sign_pdf():
         input_pdf_buffer = apply_qr_codes(input_pdf_buffer, params, user, full_signed_pdf_url)
 
         # 9. Application des signatures sur chaque page concernée
-        input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, params["pages"], signer, signer_stamp)
+        # Préparer les infos du signataire pour affichage sous la signature
+        signer_info = {
+            'name': user.name,
+            'sub_name': user.sub_name if hasattr(user, 'sub_name') else None,
+            'function': user.function if hasattr(user, 'function') else None,
+            'email': user.email
+        }
+        input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, params["pages"], signer, signer_stamp, signer_info)
 
         # 10. Enregistrement du PDF final sur le disque
         save_final_pdf(input_pdf_buffer, signed_pdf_path)
@@ -95,9 +103,26 @@ def sign_pdf():
         update_signature_volumes(user, company, 1)
         db.session.commit()
 
+        # 12. Génération de la preuve de signature
+        proof = create_signature_proof(
+            document_id=document.id if document else None,
+            signer=user,
+            signer_type='user',
+            document_name=params.get("name", "document"),
+            file_path_after=signed_pdf_path,
+            cert_path=cert_path,
+            cert_type=company.cert_type if company else None,
+            signature_method='jwt',
+            signature_positions=params.get("pages"),
+            consent_accepted=bool(document),
+            company=company,
+            batch_id=params.get("batch_id"),
+        )
+
         return jsonify({
             "message": "Document signé avec succès.",
-            "doc_signed": full_signed_pdf_url
+            "doc_signed": full_signed_pdf_url,
+            "proof": build_proof_urls(proof) if proof else None
         }), 200
 
     except Exception as e:
@@ -161,7 +186,14 @@ def sign_multiple_pdfs():
             input_pdf_buffer = apply_qr_codes(input_pdf_buffer, params, user, full_signed_pdf_url)
 
             # 12. Application des signatures
-            input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, params.get("pages", []), signer, signer_stamp)
+            # Préparer les infos du signataire pour affichage sous la signature
+            signer_info = {
+                'name': user.name,
+                'sub_name': user.sub_name if hasattr(user, 'sub_name') else None,
+                'function': user.function if hasattr(user, 'function') else None,
+                'email': user.email
+            }
+            input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, params.get("pages", []), signer, signer_stamp, signer_info)
 
             # 13. Enregistrement du PDF final
             save_final_pdf(input_pdf_buffer, signed_pdf_path)
@@ -170,10 +202,27 @@ def sign_multiple_pdfs():
             update_document_record(user, params, document, relative_file_path)
             total_signatures += 1
 
+            # 14b. Génération de la preuve de signature
+            proof = create_signature_proof(
+                document_id=document.id if document else None,
+                signer=user,
+                signer_type='user',
+                document_name=params.get("name", "Unnamed"),
+                file_path_after=signed_pdf_path,
+                cert_path=cert_path,
+                cert_type=company.cert_type if company else None,
+                signature_method='jwt',
+                signature_positions=params.get("pages"),
+                consent_accepted=bool(document),
+                company=company,
+                batch_id=params.get("batch_id"),
+            )
+
             signed_results.append({
                 "filename": params.get("name", "Unnamed"),
                 "message": "Document signé avec succès.",
-                "doc_signed": full_signed_pdf_url
+                "doc_signed": full_signed_pdf_url,
+                "proof": build_proof_urls(proof) if proof else None
             })
 
         # 15. Mise à jour du volume de signatures

@@ -76,50 +76,50 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔑 Nouvelle clé API générée</h1>
-            <p>DKB-Sign - Signature électronique</p>
+            <h1>🔑 New API Key Generated</h1>
+            <p>DKB-Sign - Electronic Signature</p>
         </div>
 
-        <p>Bonjour <strong>{{ user_name }}</strong>,</p>
+        <p>Hello <strong>{{ user_name }}</strong>,</p>
 
-        <p>Une nouvelle clé API a été générée avec succès pour votre compte DKB-Sign.</p>
+        <p>A new API key has been successfully generated for your DKB-Sign account.</p>
 
         <div class="api-key-section">
-            <h3>Votre clé API :</h3>
+            <h3>Your API Key:</h3>
             <div class="api-key">{{ api_key }}</div>
         </div>
 
         <div class="warning">
-            <strong>⚠️ Important :</strong>
+            <strong>⚠️ Important:</strong>
             <ul>
-                <li>Gardez cette clé en sécurité et ne la partagez jamais</li>
-                <li>Cette clé vous permet d'accéder aux API publiques de DKB-Sign</li>
-                <li>Utilisez-la dans le header <code>X-API-Key</code> ou <code>Authorization: Bearer</code></li>
-                <li>Si vous pensez que cette clé a été compromise, désactivez-la immédiatement</li>
+                <li>Keep this key secure and never share it</li>
+                <li>This key allows you to access DKB-Sign public APIs</li>
+                <li>Use it in the <code>X-API-Key</code> or <code>Authorization: Bearer</code> header</li>
+                <li>If you think this key has been compromised, disable it immediately</li>
             </ul>
         </div>
 
-        <h3>Comment utiliser votre clé API :</h3>
-        <p>Pour utiliser votre clé API, incluez-la dans vos requêtes HTTP de l'une des façons suivantes :</p>
+        <h3>How to Use Your API Key:</h3>
+        <p>To use your API key, include it in your HTTP requests in one of the following ways:</p>
         
         <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
-            <strong>Méthode 1 - Header X-API-Key :</strong><br>
+            <strong>Method 1 - X-API-Key Header:</strong><br>
             <code>X-API-Key: {{ api_key }}</code>
         </div>
         
         <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
-            <strong>Méthode 2 - Header Authorization :</strong><br>
+            <strong>Method 2 - Authorization Header:</strong><br>
             <code>Authorization: Bearer {{ api_key }}</code>
         </div>
 
-        <p>Si vous n'êtes pas à l'origine de cette génération de clé API, veuillez nous contacter immédiatement à l'adresse support@dkb-sign.com.</p>
+        <p>If you did not generate this API key, please contact us immediately at support@dkb-sign.com.</p>
 
-        <p>Cordialement,<br>
-        <strong>L'équipe DKB-Sign</strong></p>
+        <p>Best regards,<br>
+        <strong>The DKB-Sign Team</strong></p>
 
         <div class="footer">
-            <p>© {{ current_year }} DKB-Sign. Tous droits réservés.</p>
-            <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+            <p>© {{ current_year }} DKB-Sign. All rights reserved.</p>
+            <p>This email was sent automatically, please do not reply.</p>
         </div>
     </div>
 </body>

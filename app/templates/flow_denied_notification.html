@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if is_denier %}Confirmation de votre refus{% else %}Action Refusée{% endif %} - {{ document_name }}</title>
+    <title>{% if is_denier %}Confirmation of Your Denial{% else %}Action Denied{% endif %} - {{ document_name }}</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -128,49 +128,49 @@
     <div class="container">
         <div class="header">
             {% if is_denier %}
-            <h1>✋ Confirmation de Refus</h1>
-            <p>Votre décision a été enregistrée</p>
+            <h1>✋ Denial Confirmation</h1>
+            <p>Your decision has been recorded</p>
             {% else %}
-            <h1>⚠️ Action Refusée</h1>
-            <p>Un participant a refusé d'effectuer les actions requises</p>
+            <h1>⚠️ Action Denied</h1>
+            <p>A participant has refused to perform the required actions</p>
             {% endif %}
         </div>
         <div class="content">
-            <p>Bonjour <strong>{{ name }}</strong>,</p>
+            <p>Hello <strong>{{ name }}</strong>,</p>
             
             <div class="alert-box">
                 {% if is_denier %}
-                <p>Nous confirmons que vous avez refusé d'effectuer les actions requises dans le workflow.</p>
+                <p>We confirm that you have refused to perform the required actions in the workflow.</p>
                 {% else %}
-                <p>Le participant <strong>{{ participant_name }}</strong> a refusé d'effectuer les actions requises dans le workflow.</p>
+                <p>The participant <strong>{{ participant_name }}</strong> has refused to perform the required actions in the workflow.</p>
                 {% endif %}
             </div>
 
             <div class="info-box">
-                <p><span class="label">Document :</span> {{ document_name }}</p>
-                <p><span class="label">Workflow :</span> {{ workflow_name }}</p>
-                <p><span class="label">Référence :</span> {{ reference }}</p>
-                <p><span class="label">Date du refus :</span> {{ denial_date }}</p>
+                <p><span class="label">Document:</span> {{ document_name }}</p>
+                <p><span class="label">Workflow:</span> {{ workflow_name }}</p>
+                <p><span class="label">Reference:</span> {{ reference }}</p>
+                <p><span class="label">Denial date:</span> {{ denial_date }}</p>
             </div>
 
             <div class="denial-reason">
-                <h3>📝 {% if is_denier %}Votre raison du refus{% else %}Raison du refus{% endif %} :</h3>
+                <h3>📝 {% if is_denier %}Your reason for denial{% else %}Reason for denial{% endif %}:</h3>
                 <p>{{ denial_reason }}</p>
             </div>
 
             {% if is_denier %}
             <div class="next-steps">
-                <h3>🔍 Prochaines étapes</h3>
-                <p>Le créateur du workflow et les autres participants ont été informés de votre décision.</p>
-                <p>Si vous souhaitez modifier votre décision ou discuter de la situation, veuillez contacter le créateur du workflow.</p>
+                <h3>🔍 Next Steps</h3>
+                <p>The workflow creator and other participants have been informed of your decision.</p>
+                <p>If you wish to change your decision or discuss the situation, please contact the workflow creator.</p>
             </div>
             {% endif %}
 
-            <p>Cordialement,<br>L'équipe <strong>DKB Sign</strong></p>
+            <p>Best regards,<br>The <strong>DKB Sign</strong> team</p>
         </div>
         <div class="footer">
-            <p>&copy; {{ current_year }} DKB Sign. Tous droits réservés.</p>
-            <p>Pour toute question, n'hésitez pas à <a href="mailto:support@dkbsign.com">nous contacter</a>.</p>
+            <p>&copy; {{ current_year }} DKB Sign. All rights reserved.</p>
+            <p>For any questions, feel free to <a href="mailto:support@dkbsign.com">contact us</a>.</p>
         </div>
     </div>
 </body>

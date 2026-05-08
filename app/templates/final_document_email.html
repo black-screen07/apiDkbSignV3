@@ -42,27 +42,27 @@
 </head>
 <body>
     <div class="header">
-        <h2>Document signé - Copie finale</h2>
+        <h2>Signed Document - Final Copy</h2>
     </div>
 
     <div class="content">
-        <p>Bonjour {{ name }},</p>
+        <p>Hello {{ name }},</p>
         
-        <p>Le document <strong>{{ document_name }}</strong> a été signé par toutes les parties. Vous trouverez ci-dessous un lien pour télécharger la version finale du document avec toutes les signatures.</p>
+        <p>The document <strong>{{ document_name }}</strong> has been signed by all parties. Below you will find a link to download the final version of the document with all signatures.</p>
 
-        <p>Pour télécharger le document, veuillez cliquer sur le bouton ci-dessous :</p>
+        <p>To download the document, please click the button below:</p>
 
         <center>
-            <a href="{{ document_url }}" class="button" target="_blank">Télécharger le document</a>
+            <a href="{{ document_url }}" class="button" target="_blank">Download Document</a>
         </center>
 
-        <p>Ce lien vous permettra d'accéder à la version finale signée du document.</p>
+        <p>This link will allow you to access the final signed version of the document.</p>
 
-        <p>Cordialement,<br>L'équipe DKB-Sign</p>
+        <p>Best regards,<br>The DKB-Sign team</p>
     </div>
 
     <div class="footer">
-        <p>&copy; {{ current_year }} DKB-Sign. Tous droits réservés.</p>
+        <p>&copy; {{ current_year }} DKB-Sign. All rights reserved.</p>
     </div>
 </body>
 </html>

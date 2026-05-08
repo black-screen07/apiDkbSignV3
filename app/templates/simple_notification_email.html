@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notification de Demande de Signature</title>
+    <title>Signature Request Notification</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -123,24 +123,24 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔔 Notification de Signature</h1>
-            <p>Vous avez des actions en attente !</p>
+            <h1>🔔 Signature Notification</h1>
+            <p>You have pending actions!</p>
         </div>
         <div class="content">
-            <p>Bonjour <strong>{{ name }}</strong>,</p>
-            <p>Vous avez une ou plusieurs actions à effectuer dans le workflow : <strong>{{ workflow_name }}</strong>.</p>
-            <p>Document : <strong>{{ document_name }}</strong></p>
-            <p>Référence : <strong>{{ reference }}</strong></p>
-            <h3>✅ Actions Requises :</h3>
+            <p>Hello <strong>{{ name }}</strong>,</p>
+            <p>You have one or more actions to perform in the workflow: <strong>{{ workflow_name }}</strong>.</p>
+            <p>Document: <strong>{{ document_name }}</strong></p>
+            <p>Reference: <strong>{{ reference }}</strong></p>
+            <h3>✅ Required Actions:</h3>
             {{ actions_list | safe }}
-            <p>Connectez-vous pour effectuer les actions nécessaires.</p>
-            <a href="https://dkb-sign-ui.vercel.app/auth/login" class="button">Accéder à Mon Compte</a>
-            <p>Merci pour votre collaboration.</p>
-            <p>Cordialement,<br>L'équipe <strong>DKB Sign</strong>.</p>
+            <p>Log in to perform the necessary actions.</p>
+            <a href="https://dkb-sign-ui.vercel.app/auth/login" class="button">Access My Account</a>
+            <p>Thank you for your collaboration.</p>
+            <p>Best regards,<br>The <strong>DKB Sign</strong> team.</p>
         </div>
         <div class="footer">
-            <p>&copy; {{ current_year }} DKB Sign. Tous droits réservés.</p>
-            <p>Si vous avez reçu cet email par erreur, veuillez <a href="mailto:support@dkbsign.com">nous contacter</a>.</p>
+            <p>&copy; {{ current_year }} DKB Sign. All rights reserved.</p>
+            <p>If you received this email by mistake, please <a href="mailto:support@dkbsign.com">contact us</a>.</p>
         </div>
     </div>
 </body>

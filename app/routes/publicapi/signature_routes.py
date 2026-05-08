@@ -15,6 +15,7 @@ from app.utils.debug_logger import (
 )
 from app.utils.public_signature_utils import (
     retrieve_certificates,
+    retrieve_certificates_by_email,
     parse_request_content,
     load_signature_image,
     load_pdf,
@@ -30,12 +31,24 @@ from app.utils.public_signature_utils import (
     apply_qr_codes,
     sign_pdf_pages,
     save_final_pdf,
-    update_document_record
+    update_document_record,
+    prepare_signature_image,
+    add_vertical_text_to_pdf,
+    add_qr_code_to_pdf,
+    generate_qr_code_image,
+    mm_to_points,
+    extract_certificate_and_key
 )
-from app.models import db, Document, Contact, Signer
+from app.models import db, Document, Contact, Signer, User, CertTypeEnum
+# NOTE: Le système de proof est temporairement désactivé en prod tant que la BD
+# n'est pas migrée (tables SignatureProof / SignatureAuditEvent absentes).
+# Ré-activer cet import et les blocs proof correspondants une fois la migration appliquée.
+# from app.services.signature_proof_service import create_signature_proof, build_proof_urls
 from datetime import datetime
 import uuid
 import os
+import tempfile
+from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 
 publicapi_signature_bp = Blueprint('publicapi_signature_bp', __name__)
@@ -100,9 +113,20 @@ def sign_pdf():
         user_info = {
             'name': user.name if hasattr(user, 'name') and user.name else user.email,
             'sub_name': user.sub_name if hasattr(user, 'sub_name') else '',
-            'function': 'Utilisateur authentifié'
+            'function': 'Utilisateur authentifié',
+            'grade': params.get('grade', ''),
+            'show_legal_mention': params.get('show_legal_mention', False),
+            'document_type': params.get('document_type', ''),
+            'legal_mention_x': params.get('legal_mention_x'),
+            'legal_mention_y': params.get('legal_mention_y'),
+            'show_signer_details': params.get('show_signer_details', False),
+            'signer_details_x': params.get('signer_details_x'),
+            'signer_details_y': params.get('signer_details_y'),
+            'special_mention': params.get('special_mention'),
+            'special_mention_x': params.get('special_mention_x'),
+            'special_mention_y': params.get('special_mention_y')
         }
-        input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, params["pages"], signer, signer_stamp, user_info)
+        input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, params["pages"], signer, signer_stamp, user_info, signature_size=params.get('signature_size'))
 
         # 10. Enregistrement du PDF final sur le disque
         save_final_pdf(input_pdf_buffer, signed_pdf_path)
@@ -112,9 +136,29 @@ def sign_pdf():
         update_signature_volumes(user, company, 1)
         db.session.commit()
 
+        # 12. Génération de la preuve de signature
+        # TEMPORAIREMENT DÉSACTIVÉ — la BD de prod n'est pas encore migrée pour le système de proof.
+        # À ré-activer une fois la migration appliquée.
+        # proof = create_signature_proof(
+        #     document_id=document.id if document else None,
+        #     signer=user,
+        #     signer_type='user',
+        #     document_name=params.get("name", "document"),
+        #     file_path_after=signed_pdf_path,
+        #     cert_path=cert_path,
+        #     cert_type=company.cert_type if company else None,
+        #     signature_method='api_key',
+        #     signature_positions=params.get("pages"),
+        #     consent_accepted=bool(document),
+        #     company=company,
+        #     batch_id=params.get("batch_id"),
+        # )
+        # proof = None
+
         return jsonify({
             "message": "Document signé avec succès.",
             "doc_signed": full_signed_pdf_url
+            # "proof": build_proof_urls(proof, api_prefix='publicapi_') if proof else None
         }), 200
 
     except Exception as e:
@@ -180,9 +224,20 @@ def sign_multiple_pdfs():
             user_info = {
                 'name': user.name if hasattr(user, 'name') and user.name else user.email,
                 'sub_name': user.sub_name if hasattr(user, 'sub_name') else '',
-                'function': 'Utilisateur authentifié'
+                'function': 'Utilisateur authentifié',
+                'grade': params.get('grade', ''),
+                'show_legal_mention': params.get('show_legal_mention', False),
+                'document_type': params.get('document_type', ''),
+                'legal_mention_x': params.get('legal_mention_x'),
+                'legal_mention_y': params.get('legal_mention_y'),
+                'show_signer_details': params.get('show_signer_details', False),
+                'signer_details_x': params.get('signer_details_x'),
+                'signer_details_y': params.get('signer_details_y'),
+                'special_mention': params.get('special_mention'),
+                'special_mention_x': params.get('special_mention_x'),
+                'special_mention_y': params.get('special_mention_y')
             }
-            input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, params.get("pages", []), signer, signer_stamp, user_info)
+            input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, params.get("pages", []), signer, signer_stamp, user_info, signature_size=params.get('signature_size'))
 
             # 13. Enregistrement du PDF final
             save_final_pdf(input_pdf_buffer, signed_pdf_path)
@@ -191,10 +246,30 @@ def sign_multiple_pdfs():
             update_document_record(user, params, document, relative_file_path)
             total_signatures += 1
 
+            # 14b. Génération de la preuve de signature
+            # TEMPORAIREMENT DÉSACTIVÉ — la BD de prod n'est pas encore migrée pour le système de proof.
+            # À ré-activer une fois la migration appliquée.
+            # proof = create_signature_proof(
+            #     document_id=document.id if document else None,
+            #     signer=user,
+            #     signer_type='user',
+            #     document_name=params.get("name", "Unnamed"),
+            #     file_path_after=signed_pdf_path,
+            #     cert_path=cert_path,
+            #     cert_type=company.cert_type if company else None,
+            #     signature_method='api_key',
+            #     signature_positions=params.get("pages"),
+            #     consent_accepted=bool(document),
+            #     company=company,
+            #     batch_id=params.get("batch_id"),
+            # )
+            # proof = None
+
             signed_results.append({
                 "filename": params.get("name", "Unnamed"),
                 "message": "Document signé avec succès.",
                 "doc_signed": full_signed_pdf_url
+                # "proof": build_proof_urls(proof, api_prefix='publicapi_') if proof else None
             })
 
         # 15. Mise à jour du volume de signatures
@@ -431,6 +506,9 @@ def sign_upload_multiple_documents():
                         except Exception as e:
                             current_app.logger.error(f"❌ Erreur lors du chargement de l'image pour signataire {i} (nom '{file.filename}'): {str(e)}")
         
+        # NOTE: Ne PAS appeler prepare_signature_image ici - sign_pdf_pages le fait déjà.
+        # Un double traitement (double sharpening, double trim) dégrade la qualité.
+        
         # Log du résumé des images trouvées
         signature_logger.info(f"📊 RÉSUMÉ: {len(signature_images)} images chargées sur {len(signers_data)} signataires")
         for idx, img in signature_images.items():
@@ -524,11 +602,14 @@ def sign_upload_multiple_documents():
                     ]
                     auto_position_index += 1
 
-            # 13. CRITIQUE: Ajouter TOUS les textes d'informations signataires AVANT toutes les signatures
-            # pour ne pas invalider les certificats
+            # ================================================================
+            # PREMIÈRE PASSE CRITIQUE: Appliquer TOUT le contenu visuel
+            # (textes, QR codes, cachets) AVANT toute signature numérique.
+            # Toute modification du PDF après une signature invalide le certificat.
+            # ================================================================
             current_pdf_buffer = input_pdf_buffer
             
-            # Première passe: ajouter tous les textes si show_signer_info est activé
+            # 13a. Ajouter tous les textes d'informations signataires
             for param in doc_signature_params:
                 show_signer_info = param.get('show_signer_info', False)
                 if show_signer_info:
@@ -565,7 +646,32 @@ def sign_upload_multiple_documents():
                                 except Exception as e:
                                     signature_logger.error(f"⚠️ Erreur ajout texte signataire {signer_index}: {str(e)}")
             
-            # Deuxième passe: appliquer toutes les signatures (le PDF a maintenant tous les textes)
+            # 13b. Appliquer TOUS les QR codes de TOUS les signataires AVANT les signatures
+            for param in doc_signature_params:
+                qrcodes = param.get('qrcodes', [])
+                if qrcodes:
+                    try:
+                        current_pdf_buffer = apply_qr_codes(current_pdf_buffer, {'qrcodes': qrcodes}, user, full_signed_pdf_url)
+                        signature_logger.info(f"✅ QR codes appliqués pour signataire {param.get('signer_index')} ({len(qrcodes)} QR code(s))")
+                    except Exception as e:
+                        signature_logger.error(f"⚠️ Erreur ajout QR codes pour signataire {param.get('signer_index')}: {str(e)}")
+            
+            # 13c. Appliquer TOUS les cachets de TOUS les signataires AVANT les signatures
+            for param in doc_signature_params:
+                stamp_pages = param.get('stamp_pages', [])
+                if stamp_pages:
+                    try:
+                        current_pdf_buffer = apply_stamp(current_pdf_buffer, user, {'stamp_pages': stamp_pages})
+                        signature_logger.info(f"✅ Cachet appliqué pour signataire {param.get('signer_index')} sur pages {stamp_pages}")
+                    except Exception as e:
+                        signature_logger.error(f"⚠️ Erreur ajout cachet pour signataire {param.get('signer_index')}: {str(e)}")
+            
+            signature_logger.info(f"✅ Première passe terminée: textes, QR codes et cachets appliqués. Passage aux signatures numériques.")
+            
+            # ================================================================
+            # DEUXIÈME PASSE: Appliquer les signatures numériques.
+            # RIEN ne doit être ajouté au PDF après cette étape.
+            # ================================================================
             for param in doc_signature_params:
                 signer_index = param.get('signer_index')
                 if signer_index is None or signer_index >= len(signers_data):
@@ -592,19 +698,6 @@ def sign_upload_multiple_documents():
                         # Créer une copie pour éviter de modifier l'original (important si réutilisé)
                         sig_image_pil = sig_image_pil.copy()
                         
-                        # Vérifier si une taille personnalisée est spécifiée
-                        signature_size = param.get('signature_size')
-                        if signature_size and isinstance(signature_size, dict):
-                            custom_width = signature_size.get('width')
-                            custom_height = signature_size.get('height')
-                            
-                            if custom_width and custom_height:
-                                # Redimensionner l'image selon les dimensions spécifiées
-                                sig_image_pil = sig_image_pil.resize((int(custom_width), int(custom_height)), Image.Resampling.LANCZOS)
-                                current_app.logger.info(f"✅ Image de signature redimensionnée pour signataire {signer_index}: {sig_image_pil.size}")
-                            else:
-                                current_app.logger.warning(f"⚠️ Dimensions de signature invalides pour signataire {signer_index}: {signature_size}")
-                        
                         signer_stamp = sig_image_pil
                         log_image_info(signer_index, signer_stamp, "Image ASSIGNÉE à signer_stamp")
                         log_signature_process(signer_index, "Image personnalisée assignée avec succès")
@@ -623,18 +716,6 @@ def sign_upload_multiple_documents():
                         if default_image:
                             # Créer une copie pour éviter de modifier l'original
                             signer_stamp = default_image.copy()
-                            
-                            # Appliquer le redimensionnement personnalisé si spécifié
-                            signature_size = param.get('signature_size')
-                            if signature_size and isinstance(signature_size, dict):
-                                custom_width = signature_size.get('width')
-                                custom_height = signature_size.get('height')
-                                
-                                if custom_width and custom_height:
-                                    # Redimensionner l'image par défaut selon les dimensions spécifiées
-                                    signer_stamp = signer_stamp.resize((int(custom_width), int(custom_height)), Image.Resampling.LANCZOS)
-                                    current_app.logger.info(f"✅ Image de signature par défaut redimensionnée: {signer_stamp.size}")
-                            
                             current_app.logger.info(f"⚠️ Utilisation de l'image de signature par défaut de l'utilisateur pour signataire {signer_index}")
                         else:
                             current_app.logger.warning(f"⚠️ Aucune image par défaut disponible pour l'utilisateur")
@@ -642,10 +723,26 @@ def sign_upload_multiple_documents():
                         current_app.logger.error(f"❌ Impossible de charger l'image de signature par défaut: {str(e)}")
                         current_app.logger.warning(f"⚠️ Signature sans image pour le signataire {signer_index}")
 
-                # 14. Configuration du signataire PyHanko (utilise le certificat de l'initiateur)
-                signer = create_pdf_signer(key_path, cert_path, cert_chain)
+                # 14. Configuration du signataire PyHanko
+                # Pour personnePhysique: utiliser le certificat P12 propre au signataire (via son email)
+                # Pour cachetServeur ou individual: utiliser le certificat global de l'initiateur
+                signer_email_for_cert = signers_data[signer_index].get('email', '')
+                if company and company.cert_type == CertTypeEnum.PERSONNE_PHYSIQUE and signer_email_for_cert:
+                    try:
+                        s_cert_path, s_key_path, s_cert_chain = retrieve_certificates_by_email(signer_email_for_cert, company)
+                        signer = create_pdf_signer(s_key_path, s_cert_path, s_cert_chain)
+                        signature_logger.info(f"🔐 Certificat personnel chargé pour {signer_email_for_cert} (personnePhysique)")
+                    except (ValueError, FileNotFoundError) as cert_err:
+                        signature_logger.warning(f"⚠️ Certificat personnel introuvable pour {signer_email_for_cert}: {str(cert_err)}. Utilisation du certificat de l'initiateur.")
+                        signer = create_pdf_signer(key_path, cert_path, cert_chain)
+                else:
+                    signer = create_pdf_signer(key_path, cert_path, cert_chain)
 
                 # 15. Application des signatures sur les pages avec informations du signataire
+                # NOTE: Pour la mention spéciale UNIQUEMENT, on accepte aussi qu'elle vienne
+                # de signature_params (variable `param`) en plus de signers_data, car la
+                # mention protocolaire dépend du document signé. Les autres champs restent
+                # lus depuis signers_data comme avant pour ne pas modifier le contrat existant.
                 signer_info = None
                 if signer_index is not None and signer_index < len(signers_data):
                     signer_data = signers_data[signer_index]
@@ -654,7 +751,18 @@ def sign_upload_multiple_documents():
                         'sub_name': signer_data.get('firstname', ''),  # Utiliser firstname du JSON
                         'function': signer_data.get('function', ''),
                         'email': signer_data.get('email', ''),
-                        'phone': signer_data.get('phone', '')
+                        'phone': signer_data.get('phone', ''),
+                        'grade': signer_data.get('grade', ''),
+                        'show_legal_mention': signer_data.get('show_legal_mention', False),
+                        'document_type': signer_data.get('document_type', ''),
+                        'legal_mention_x': signer_data.get('legal_mention_x'),
+                        'legal_mention_y': signer_data.get('legal_mention_y'),
+                        'show_signer_details': signer_data.get('show_signer_details', False),
+                        'signer_details_x': signer_data.get('signer_details_x'),
+                        'signer_details_y': signer_data.get('signer_details_y'),
+                        'special_mention': param.get('special_mention', signer_data.get('special_mention')),
+                        'special_mention_x': param.get('special_mention_x', signer_data.get('special_mention_x')),
+                        'special_mention_y': param.get('special_mention_y', signer_data.get('special_mention_y'))
                     }
                 
                 log_image_info(signer_index, signer_stamp, "AVANT sign_pdf_pages")
@@ -741,21 +849,13 @@ def sign_upload_multiple_documents():
                     signer_stamp, 
                     signer_info,
                     show_signer_info=False,  # Textes déjà ajoutés avant
-                    custom_timestamp=custom_timestamp  # Date personnalisée ou None
+                    custom_timestamp=custom_timestamp,  # Date personnalisée ou None
+                    signature_size=param.get('signature_size')  # Taille personnalisée
                 )
                 log_signature_process(signer_index, "sign_pdf_pages terminé avec succès")
 
-                # 16. Application des QR codes si spécifiés
-                qrcodes = param.get('qrcodes', [])
-                if qrcodes:
-                    current_pdf_buffer = apply_qr_codes(current_pdf_buffer, {'qrcodes': qrcodes}, user, full_signed_pdf_url)
-
-                # 17. Application du cachet si spécifié
-                stamp_pages = param.get('stamp_pages', [])
-                if stamp_pages:
-                    current_pdf_buffer = apply_stamp(current_pdf_buffer, user, {'stamp_pages': stamp_pages})
-
-                # Note: signer_stamp est maintenant un objet PIL Image, pas un fichier
+                # NOTE: QR codes et cachets ont déjà été appliqués dans la première passe
+                # Ne RIEN ajouter au PDF après la signature numérique pour ne pas invalider le certificat
 
             # 18. Sauvegarde du PDF final
             save_final_pdf(current_pdf_buffer, signed_pdf_path)
@@ -833,16 +933,38 @@ def sign_upload_multiple_documents():
                 current_app.logger.error(f"Erreur lors de la création du document en base : {str(e)}")
                 # Continue même si l'enregistrement en base échoue
 
+            # Génération de la preuve de signature pour chaque signataire
+            # TEMPORAIREMENT DÉSACTIVÉ — la BD de prod n'est pas encore migrée pour le système de proof.
+            # À ré-activer une fois la migration appliquée.
+            # proof_list = []
+            # for signer_info_data in signers_data:
+            #     proof = create_signature_proof(
+            #         document_id=new_document.id if new_document else None,
+            #         signer={'name': f"{signer_info_data.get('name', '')} {signer_info_data.get('firstname', '')}", 'email': signer_info_data.get('email', ''), 'phone': ''},
+            #         signer_type='external',
+            #         document_name=uploaded_file.filename,
+            #         file_path_after=signed_pdf_path,
+            #         cert_path=cert_path,
+            #         cert_type=company.cert_type if company else None,
+            #         signature_method='api_key',
+            #         company=company,
+            #     )
+            #     if proof:
+            #         proof_data = build_proof_urls(proof, api_prefix='publicapi_')
+            #         proof_data["signer_name"] = f"{signer_info_data.get('name', '')} {signer_info_data.get('firstname', '')}"
+            #         proof_list.append(proof_data)
+
             signed_results.append({
                 "document_name": uploaded_file.filename,
                 "signed_pdf_url": full_signed_pdf_url,
                 "signers": [{
                     "name": signer['name'],
-                    "firstname": signer['firstname'], 
+                    "firstname": signer['firstname'],
                     "function": signer['function']
                 } for signer in signers_data]
+                # "proofs": proof_list
             })
-            
+
             # Compter 1 signature par document traité
             total_signatures += 1
 
@@ -861,8 +983,218 @@ def sign_upload_multiple_documents():
 
     except Exception as e:
         db.session.rollback()
-        log_error(e, "Erreur globale sign-upload-multiple", traceback.format_exc())
+        error_traceback = traceback.format_exc()
+        log_error(e, "Erreur globale sign-upload-multiple", error_traceback)
         if session_id:
             close_session_log(session_id, success=False, message=str(e))
-        return jsonify({"error": f"Erreur lors de la signature : {str(e)}"}), 500
+        
+        # Retourner l'erreur détaillée avec le traceback pour debug en production
+        return jsonify({
+            "error": f"Erreur lors de la signature : {str(e)}",
+            "error_type": type(e).__name__,
+            "traceback": error_traceback.split('\n')[-10:]  # Dernières 10 lignes du traceback
+        }), 500
 
+
+# ================================================================
+# ROUTE SPÉCIFIQUE ARCOP
+# Signature automatique avec positions prédéfinies
+# ================================================================
+
+ARCOP_SIGNATURE_FOLDER = Path("signatures/companies/ARCOP")
+ARCOP_CERTIFICATE_FOLDER = Path("certificates/companies/ARCOP")
+
+@publicapi_signature_bp.route('/sign-arcop', methods=['POST'])
+@require_api_key
+def sign_arcop():
+    """
+    Route spécifique pour l'ARCOP — signature automatique complète.
+    L'ARCOP envoie uniquement le PDF et le nom du signataire.
+    Tout le reste est automatique : cachet, QR code, textes d'info, 
+    mention verticale, points colorés, référence QNRR, bandeau bas.
+    
+    Paramètres (form-data):
+        - document: Fichier PDF à signer (obligatoire, ou file_url)
+        - file_url: URL du PDF si pas de fichier uploadé (alternatif)
+        - signer_name: Nom du signataire (ex: "OUATTARA Oumar") - obligatoire
+    """
+    try:
+        # 1. Authentification et validation
+        user = get_authenticated_user_by_api_key()
+        company = get_user_company(user)
+        validate_signature_volumes(user, company)
+
+        # 2. Paramètre obligatoire : nom du signataire
+        signer_name = request.form.get('signer_name', '').strip()
+        if not signer_name:
+            return jsonify({"error": "Le paramètre 'signer_name' est obligatoire."}), 400
+
+        # 3. Récupération des certificats de l'entreprise
+        cert_path, key_path, cert_chain = retrieve_certificates(user, company)
+        if not cert_path or not key_path:
+            return jsonify({"error": "Certificat ou clé privée introuvable."}), 400
+        signer = create_pdf_signer(key_path, cert_path, cert_chain)
+
+        # 4. Chargement de l'image de signature (cachet) depuis le dossier de l'entreprise
+        company_sig_folder = Path("signatures/companies") / company.name
+        arcop_sig_path = None
+        for ext in ['png', 'jpg', 'jpeg']:
+            candidate = company_sig_folder / f"signature.{ext}"
+            if candidate.exists():
+                arcop_sig_path = candidate
+                break
+        if not arcop_sig_path and company_sig_folder.exists():
+            for f in company_sig_folder.iterdir():
+                if f.suffix.lower() in ['.png', '.jpg', '.jpeg']:
+                    arcop_sig_path = f
+                    break
+        if not arcop_sig_path:
+            return jsonify({"error": f"Image de signature introuvable dans {company_sig_folder}"}), 400
+
+        signer_stamp = Image.open(arcop_sig_path)
+        if signer_stamp.mode != 'RGBA':
+            signer_stamp = signer_stamp.convert('RGBA')
+        current_app.logger.info(f"✅ Cachet ARCOP chargé: {arcop_sig_path} ({signer_stamp.size})")
+
+        # 5. Chargement du PDF
+        uploaded_file = request.files.get('document')
+        file_url = request.form.get('file_url')
+        if uploaded_file and uploaded_file.filename:
+            input_pdf_buffer = load_pdf(uploaded_file, None)
+        elif file_url:
+            input_pdf_buffer = load_pdf(None, file_url)
+        else:
+            return jsonify({"error": "Aucun document fourni. Utilisez 'document' (fichier) ou 'file_url' (URL)."}), 400
+        if not input_pdf_buffer:
+            return jsonify({"error": "Impossible de charger le document."}), 400
+
+        # 6. Analyse du PDF (nombre de pages, dimensions dernière page)
+        from PyPDF2 import PdfReader
+        input_pdf_buffer.seek(0)
+        pdf_reader = PdfReader(input_pdf_buffer)
+        total_pages = len(pdf_reader.pages)
+        last_page = total_pages - 1
+        lp = pdf_reader.pages[last_page]
+        page_w = float(lp.mediabox.width)
+        page_h = float(lp.mediabox.height)
+        input_pdf_buffer.seek(0)
+        current_app.logger.info(f"📄 ARCOP: {total_pages} pages, dernière={page_w:.0f}x{page_h:.0f} pts")
+
+        # 7. Préparation des chemins de sauvegarde
+        full_signed_pdf_url, relative_file_path, signed_pdf_path = prepare_pdf_paths(user, company)
+
+        # ================================================================
+        # CONSTANTES ARCOP (positions basées sur le modèle de document)
+        # Le document contient DÉJÀ : points orange/vert, QNRR, bandeau,
+        # www.arcop.ci, 800 00 100, "Digitally signed by", "Signé électroniquement"
+        # L'API ajoute UNIQUEMENT : QR code, cachet/signature, nom signataire, mention verticale
+        # ================================================================
+        QR_DATA = full_signed_pdf_url
+
+        # Positions en mm (origine = bas-gauche du PDF) — calées sur la capture de référence
+        QR_X, QR_Y, QR_SIZE = 10, 43, 15        # QR code: petit, tout en bas à gauche
+        SIG_X, SIG_Y = 115, 55                   # Cachet: centre-droit, sous "Fait à Abidjan"
+        VERTICAL_TEXT = "Ce document est signé électroniquement selon les normes de confidentialité et de sécurité de l'ARTCI"
+
+        # ================================================================
+        # PASSE 1 : Contenu visuel AVANT signature numérique
+        # ================================================================
+        current_pdf = input_pdf_buffer
+
+        # 8a. Mention verticale sur le bord droit (toutes les pages)
+        for page_idx in range(total_pages):
+            try:
+                current_pdf = add_vertical_text_to_pdf(
+                    current_pdf, page_idx, VERTICAL_TEXT,
+                    font_size=6, margin_right=8, color=(0.3, 0.3, 0.3),
+                    y_start_ratio=0.105
+                )
+            except Exception as e:
+                current_app.logger.error(f"⚠️ Mention verticale page {page_idx}: {e}")
+
+        # 8b. QR code en bas à gauche (dernière page)
+        try:
+            qr_image = generate_qr_code_image(
+                QR_DATA, size=QR_SIZE,
+                fill_color="black", back_color="white",
+                box_size=10, border=2
+            )
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_qr:
+                qr_image.save(tmp_qr.name)
+                tmp_qr_path = tmp_qr.name
+            try:
+                current_pdf = add_qr_code_to_pdf(
+                    current_pdf, tmp_qr_path, last_page,
+                    mm_to_points(QR_X), mm_to_points(QR_Y), mm_to_points(QR_SIZE)
+                )
+                current_app.logger.info(f"✅ QR code ajouté page {last_page}")
+            finally:
+                os.remove(tmp_qr_path)
+        except Exception as e:
+            current_app.logger.error(f"⚠️ Erreur QR code: {e}")
+
+        # ================================================================
+        # PASSE 2 : Signature numérique PyHanko (avec image du cachet)
+        # ================================================================
+        sig_pages = [{
+            "page": last_page,
+            "signatures": [{"x": SIG_X, "y": SIG_Y}]
+        }]
+        signer_info = {
+            'name': signer_name,
+            'sub_name': '',
+            'function': 'Le Secrétaire Général',
+            'email': user.email,
+            'phone': '',
+            'grade': '',
+            'show_legal_mention': False,
+            'document_type': '',
+            'show_signer_details': False
+        }
+        current_pdf = sign_pdf_pages(
+            current_pdf, sig_pages, signer, signer_stamp, signer_info,
+            signature_size={'width': 180, 'height': 100}
+        )
+
+        # 9. Sauvegarde
+        save_final_pdf(current_pdf, signed_pdf_path)
+
+        # 10. Mise à jour base de données
+        update_signature_volumes(user, company, 1)
+        db.session.commit()
+
+        # 11. Génération de la preuve de signature
+        # TEMPORAIREMENT DÉSACTIVÉ — la BD de prod n'est pas encore migrée pour le système de proof.
+        # À ré-activer une fois la migration appliquée.
+        # proof = create_signature_proof(
+        #     document_id=None,
+        #     signer=user,
+        #     signer_type='user',
+        #     document_name=uploaded_file.filename if uploaded_file else "arcop_document",
+        #     file_path_after=signed_pdf_path,
+        #     cert_path=cert_path,
+        #     cert_type=company.cert_type if company else None,
+        #     signature_method='api_key',
+        #     signature_reason="Signature ARCOP",
+        #     company=company,
+        # )
+        # proof = None
+
+        current_app.logger.info(f"✅ Document ARCOP signé: {full_signed_pdf_url}")
+        return jsonify({
+            "message": "Document ARCOP signé avec succès.",
+            "doc_signed": full_signed_pdf_url,
+            "signer_name": signer_name,
+            "pages": total_pages
+            # "proof": build_proof_urls(proof, api_prefix='publicapi_') if proof else None
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        error_tb = traceback.format_exc()
+        current_app.logger.error(f"❌ Erreur signature ARCOP: {str(e)}\n{error_tb}")
+        return jsonify({
+            "error": f"Erreur lors de la signature ARCOP : {str(e)}",
+            "error_type": type(e).__name__,
+            "traceback": error_tb.split('\n')[-10:]
+        }), 500

@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.serialization import pkcs12, Encoding, Priva
 from cryptography.hazmat.backends import default_backend
 import json
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import uuid
 import requests
@@ -235,10 +235,131 @@ def parse_request_content(request):
     return params, file_url, file
 
 
+def trim_transparent_padding(img, margin=10):
+    """
+    Supprime l'espace transparent (ou blanc) autour de la partie visible de l'image.
+    Cela permet à la signature visible de mieux remplir la boîte PDF,
+    et réduit l'écart visuel entre la signature et le texte en dessous.
+    
+    Args:
+        img: Image PIL en mode RGBA
+        margin: Marge en pixels à conserver autour du contenu visible
+    
+    Returns:
+        Image PIL recadrée avec juste une petite marge autour du contenu visible
+    """
+    if img.mode != 'RGBA':
+        img = img.convert('RGBA')
+    
+    # Extraire le canal alpha pour détecter les pixels non-transparents
+    alpha = img.split()[3]
+    
+    # getbbox() retourne (left, upper, right, lower) du contenu non-nul
+    bbox = alpha.getbbox()
+    
+    if bbox is None:
+        # Image entièrement transparente, retourner telle quelle
+        return img
+    
+    # Ajouter une marge autour du contenu visible
+    left = max(0, bbox[0] - margin)
+    upper = max(0, bbox[1] - margin)
+    right = min(img.width, bbox[2] + margin)
+    lower = min(img.height, bbox[3] + margin)
+    
+    cropped = img.crop((left, upper, right, lower))
+    
+    return cropped
+
+
+def prepare_signature_image(img, target_box_width=250, dpi_factor=6):
+    """
+    Prépare une image de signature pour une intégration nette dans le PDF.
+    
+    Problème résolu:
+        PyHanko étire l'image pour remplir la boîte de signature PDF.
+        Si l'image source est trop petite, cet étirement crée du flou/pixelisation.
+        Si le ratio n'est pas respecté, l'image est déformée.
+        De plus, PdfImage peut appliquer une compression JPEG lossy qui dégrade la qualité.
+    
+    Solution:
+        1. Convertir en RGBA pour la transparence
+        2. Recadrer le padding transparent (trim)
+        3. Upscaler à haute résolution en respectant le ratio d'aspect
+        4. Appliquer un filtre de netteté pour compenser toute perte
+    
+    Args:
+        img: Image PIL source
+        target_box_width: Largeur de la boîte PDF en points (défaut 250)
+        dpi_factor: Multiplicateur de résolution (défaut 6 = ~432 DPI effectif)
+    
+    Returns:
+        Image PIL optimisée, prête pour PyHanko
+    """
+    from PIL import ImageFilter
+    
+    # 1. Convertir en RGBA pour garder la transparence
+    if img.mode == 'P':
+        img = img.convert('RGBA')
+    elif img.mode in ('L', 'LA'):
+        img = img.convert('RGBA')
+    elif img.mode == 'RGB':
+        img = img.convert('RGBA')
+    
+    # 2. Recadrer le padding transparent autour du contenu visible
+    img = trim_transparent_padding(img)
+    
+    # 3. Calculer la taille cible en pixels pour une résolution nette
+    # target_box_width en points * dpi_factor = pixels nécessaires
+    # Ex: 250 pts * 6 = 1500 pixels de large minimum
+    min_pixel_width = int(target_box_width * dpi_factor)
+    
+    if img.width < min_pixel_width:
+        scale_factor = min_pixel_width / img.width
+        new_width = int(img.width * scale_factor)
+        new_height = int(img.height * scale_factor)
+        # LANCZOS est le meilleur filtre pour l'upscaling (anti-aliasing de haute qualité)
+        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    
+    # 4. Appliquer un filtre de netteté pour compenser le flou d'interpolation
+    # UnsharpMask(radius, percent, threshold) - plus agressif pour contrer la compression PDF
+    img = img.filter(ImageFilter.UnsharpMask(radius=1.5, percent=120, threshold=2))
+    
+    return img
+
+
+def pil_image_to_pdf_image(img):
+    """
+    Convertit une image PIL en PdfImage via un buffer PNG lossless.
+    
+    CRITIQUE: Passer directement un objet PIL à PdfImage peut déclencher
+    une compression JPEG (DCTDecode) lossy qui dégrade la qualité.
+    En sauvegardant d'abord en PNG (FlateDecode = sans perte), on force
+    PyHanko à préserver la qualité originale de l'image.
+    
+    Args:
+        img: Image PIL (idéalement déjà traitée par prepare_signature_image)
+    
+    Returns:
+        PdfImage prête pour StaticStampStyle.background
+    """
+    from pyhanko.pdf_utils import images as pdf_images
+    
+    # Sauvegarder en PNG lossless puis recharger en PIL Image
+    # Cela force les données internes en format PNG (pas JPEG)
+    # PdfImage attend un objet PIL Image, pas un BytesIO
+    png_buffer = BytesIO()
+    img.save(png_buffer, format='PNG', optimize=False)
+    png_buffer.seek(0)
+    png_img = Image.open(png_buffer)
+    png_img.load()  # Forcer le chargement complet en mémoire
+    return pdf_images.PdfImage(png_img)
+
+
 def load_signature_image(user):
     """
     Charge l'image de signature en fonction de 'current_img_sign'.
-    Convertit en RGBA pour préserver la transparence (PyHanko supporte RGBA).
+    Applique le pipeline complet: RGBA, trim, upscale haute résolution, netteté.
     """
     if user.current_img_sign == "img":
         signature_path = Path(user.img_sign_path)
@@ -254,19 +375,12 @@ def load_signature_image(user):
 
     img = Image.open(signature_path)
     
-    # Convertir en RGBA pour garder la transparence (PyHanko supporte RGBA)
-    # Ne PAS convertir en RGB car ça cache le texte du PDF en dessous
-    if img.mode == 'P':
-        # Convertir les images avec palette en RGBA
+    # Convertir en RGBA pour la transparence
+    if img.mode != 'RGBA':
         img = img.convert('RGBA')
-    elif img.mode in ('L', 'LA'):
-        # Convertir niveaux de gris en RGBA
-        img = img.convert('RGBA')
-    elif img.mode == 'RGB':
-        # Ajouter un canal alpha aux images RGB (opaque)
-        img = img.convert('RGBA')
-    # Si déjà RGBA, ne rien faire
     
+    # NOTE: Ne PAS appeler prepare_signature_image ici.
+    # sign_pdf_pages le fait déjà. Un double traitement dégrade la qualité.
     return img
 
 
@@ -710,9 +824,293 @@ def apply_qr_codes(pdf_buffer, params, user, full_signed_pdf_url):
     return pdf_buffer
 
 
-def sign_pdf_pages(pdf_buffer, pages, signer, signer_stamp):
-    """Applique les signatures sur les pages indiquées."""
+def create_signed_by_sticker(signature_image, sticker_path="documents/sticker.png"):
+    """
+    Ajoute le sticker "Signed by" (déjà designé sur Photoshop) à côté de la signature.
+    
+    Args:
+        signature_image: Image PIL de la signature
+        sticker_path: Chemin vers le sticker DKB Sign (avec design Photoshop)
+    
+    Returns:
+        Image PIL composite avec signature + sticker
+    """
+    try:
+        current_app.logger.info(f"🎨 Ajout du sticker Photoshop - Signature: {signature_image.size}")
+        
+        # Vérifier et construire le chemin absolu du sticker
+        from pathlib import Path
+        import os
+        
+        if not os.path.isabs(sticker_path):
+            base_dir = Path(__file__).parent.parent.parent
+            sticker_path = base_dir / sticker_path
+        
+        sticker_path = Path(sticker_path)
+        
+        if not sticker_path.exists():
+            raise FileNotFoundError(f"Le fichier sticker n'existe pas: {sticker_path}")
+        
+        # Charger le sticker Photoshop
+        sticker_logo = Image.open(sticker_path)
+        current_app.logger.info(f"✅ Sticker chargé: {sticker_logo.size}, mode: {sticker_logo.mode}")
+        
+        # Convertir en RGBA pour la transparence
+        if sticker_logo.mode != 'RGBA':
+            sticker_logo = sticker_logo.convert('RGBA')
+        
+        # Le sticker est déjà vertical (300x900) - pas de rotation nécessaire
+        current_app.logger.info(f"📐 Sticker déjà vertical: {sticker_logo.size}")
+        
+        # Dimensions de la signature (à préserver ABSOLUMENT)
+        sig_width, sig_height = signature_image.size
+        current_app.logger.info(f"📏 Signature originale (NON MODIFIÉE): {sig_width}x{sig_height}")
+        
+        # Dimensions du sticker (300x900 - déjà vertical)
+        sticker_width, sticker_height = sticker_logo.size
+        current_app.logger.info(f"📏 Sticker dimensions: {sticker_width}x{sticker_height}")
+        
+        # Redimensionner le sticker à la même hauteur que la signature
+        # Utiliser 100% de la hauteur de la signature pour qu'il soit bien visible
+        target_sticker_height = sig_height
+        aspect_ratio = sticker_width / sticker_height
+        sticker_height_resized = target_sticker_height
+        sticker_width_resized = int(target_sticker_height * aspect_ratio)
+        
+        sticker_logo = sticker_logo.resize((sticker_width_resized, sticker_height_resized), Image.Resampling.LANCZOS)
+        current_app.logger.info(f"📏 Sticker redimensionné à 100% hauteur signature: {sticker_width_resized}x{sticker_height_resized}")
+        
+        # Pas d'espacement entre sticker et signature (collés)
+        spacing = 0
+        
+        # Créer l'image composite simple (sticker + signature)
+        total_width = sticker_width_resized + spacing + sig_width
+        total_height = max(sig_height, sticker_height_resized)
+        composite = Image.new('RGBA', (total_width, total_height), (255, 255, 255, 0))
+        
+        # Coller le sticker à gauche (centré verticalement)
+        sticker_y = (total_height - sticker_height_resized) // 2
+        composite.paste(sticker_logo, (0, sticker_y), sticker_logo)
+        current_app.logger.info(f"✅ Sticker collé à (0, {sticker_y})")
+        
+        # Coller la signature à droite (centrée verticalement)
+        sig_x = sticker_width_resized + spacing
+        sig_y = (total_height - sig_height) // 2
+        composite.paste(signature_image, (sig_x, sig_y), signature_image if signature_image.mode == 'RGBA' else None)
+        current_app.logger.info(f"✅ Signature collée à ({sig_x}, {sig_y})")
+        
+        current_app.logger.info(f"✅✅✅ Composite créé avec succès: {total_width}x{total_height}px")
+        return composite
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"❌ ERREUR sticker: {str(e)}")
+        current_app.logger.error(f"Traceback: {error_trace}")
+        raise Exception(f"Échec de création du sticker: {str(e)}") from e
+
+
+def add_signer_info_text(pdf_buffer, page_index, x, y, signer_info, box_width=250, box_height=80):
+    """
+    Ajoute les informations du signataire en dessous de l'image de signature.
+    
+    Args:
+        pdf_buffer: Buffer du PDF
+        page_index: Index de la page
+        x: Position X (en points) - position gauche de la boîte de signature
+        y: Position Y (en points) - position bas de la boîte de signature
+        signer_info: Dict avec name, sub_name, function, email
+        box_width: Largeur de la boîte de signature en points
+        box_height: Hauteur de la boîte de signature en points (calculée dynamiquement)
+    
+    Returns:
+        Buffer PDF modifié
+    """
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from PyPDF2 import PdfReader, PdfWriter
+    
+    # Créer un nouveau PDF avec le texte
+    packet = BytesIO()
+    can = canvas.Canvas(packet, pagesize=A4)
+    
+    # Configuration du texte - taille agrandie pour meilleure lisibilité
+    font_name = "Helvetica"
+    font_name_bold = "Helvetica-Bold"
+    font_size = 11
+    font_size_small = 9
+    line_height = 15
+    can.setFont(font_name, font_size)
+    can.setFillColorRGB(0.1, 0.1, 0.1)  # Noir quasi-total pour meilleure lisibilité
+    
+    # Construire les lignes de texte d'abord pour calculer la hauteur totale
+    lines = []
+    
+    # Ligne 1: "Digital signed by DKBSIGN" (toujours affichée)
+    lines.append("Digital signed by DKBSIGN")
+    
+    # Ligne 2: Nom Prénom
+    if signer_info.get('name') or signer_info.get('sub_name'):
+        full_name = f"{signer_info.get('sub_name', '')} {signer_info.get('name', '')}".strip()
+        if full_name:
+            lines.append(full_name)
+    
+    # Ligne 3: Fonction
+    if signer_info.get('function'):
+        lines.append(signer_info['function'])
+    
+    # Ligne 4: Email
+    if signer_info.get('email'):
+        lines.append(signer_info['email'])
+    
+    # Position du texte juste en dessous de la boîte de signature
+    # y est le bas de la boîte, donc le texte commence directement sous y
+    text_x = x  # Aligné avec le bord gauche de la signature
+    text_y = y - 5  # 5 points en dessous du bas de la boîte de signature
+    
+    # Dessiner chaque ligne avec mise en forme différenciée
+    for i, line in enumerate(lines):
+        y_pos = text_y - (i * line_height)
+        if i == 0:
+            # Première ligne "Digital signed by DKBSIGN" en gras
+            can.setFont(font_name_bold, font_size)
+            can.setFillColorRGB(0.0, 0.2, 0.5)  # Bleu foncé pour la marque
+        elif i == 1:
+            # Nom du signataire en gras
+            can.setFont(font_name_bold, font_size)
+            can.setFillColorRGB(0.1, 0.1, 0.1)  # Noir
+        else:
+            # Fonction et email en taille légèrement plus petite
+            can.setFont(font_name, font_size_small)
+            can.setFillColorRGB(0.25, 0.25, 0.25)  # Gris foncé
+        can.drawString(text_x, y_pos, line)
+    
+    can.save()
+    packet.seek(0)
+    
+    # Fusionner avec le PDF existant
+    text_pdf = PdfReader(packet)
+    existing_pdf = PdfReader(pdf_buffer)
+    output = PdfWriter()
+    
+    for i in range(len(existing_pdf.pages)):
+        page = existing_pdf.pages[i]
+        if i == page_index:
+            page.merge_page(text_pdf.pages[0])
+        output.add_page(page)
+    
+    output_stream = BytesIO()
+    output.write(output_stream)
+    output_stream.seek(0)
+    return output_stream
+
+
+def sign_pdf_pages(pdf_buffer, pages, signer, signer_stamp, signer_info=None, is_workflow=False, signature_size=None):
+    """Applique les signatures sur les pages indiquées.
+    
+    Args:
+        pdf_buffer: Buffer du PDF à signer
+        pages: Liste des pages et positions de signature
+        signer: Objet signataire PyHanko
+        signer_stamp: Image de signature PIL ou chemin vers l'image
+        signer_info: Dict avec les infos du signataire (name, sub_name, function, email)
+        is_workflow: True si c'est un workflow multi-signataires (ne pas ajouter de texte pour ne pas invalider les signatures précédentes)
+        signature_size: Dict optionnel avec 'width' et/ou 'height' en points pour personnaliser la taille de la boîte de signature
+    """
+    current_app.logger.info(f"🎯 sign_pdf_pages appelée - signer_stamp: {type(signer_stamp)}, None? {signer_stamp is None}")
+    
+    # Convertir signer_stamp en objet PIL Image si nécessaire (chemin, BytesIO, etc.)
+    if signer_stamp is not None and not isinstance(signer_stamp, Image.Image):
+        if isinstance(signer_stamp, (str, bytes, os.PathLike)):
+            current_app.logger.info(f"📂 Chargement de l'image depuis le chemin: {signer_stamp}")
+            try:
+                signer_stamp = Image.open(signer_stamp)
+                current_app.logger.info(f"✅ Image chargée: taille={signer_stamp.size}")
+            except Exception as load_error:
+                current_app.logger.error(f"❌ Erreur lors du chargement de l'image: {str(load_error)}")
+                raise Exception(f"Impossible de charger l'image de signature: {str(load_error)}") from load_error
+        elif isinstance(signer_stamp, BytesIO):
+            signer_stamp.seek(0)
+            signer_stamp = Image.open(signer_stamp)
+            current_app.logger.info(f"📂 Image chargée depuis BytesIO: {signer_stamp.size}")
+        else:
+            current_app.logger.error(f"❌ PROBLÈME: signer_stamp est de type {type(signer_stamp)}, non supporté!")
+    
+    # Calculer la taille de boîte en respectant le ratio de l'image
+    # Utiliser signature_size si fourni, sinon valeurs par défaut
+    box_width = 250  # Valeur par défaut
+    box_height = 80  # Valeur par défaut si pas d'image
+    
+    if signature_size and isinstance(signature_size, dict):
+        custom_width = signature_size.get('width')
+        custom_height = signature_size.get('height')
+        if custom_width and int(custom_width) > 0:
+            box_width = int(custom_width)
+        if custom_height and int(custom_height) > 0:
+            box_height = int(custom_height)
+        current_app.logger.info(f"📏 Taille personnalisée demandée: {box_width}x{box_height} pts")
+    
+    # Pipeline qualité: RGBA + trim + upscale haute résolution + netteté
+    # Passer box_width pour que l'upscale cible la bonne largeur
+    if signer_stamp is not None and isinstance(signer_stamp, Image.Image):
+        signer_stamp = prepare_signature_image(signer_stamp, target_box_width=box_width)
+        current_app.logger.info(f"🎯 Image PIL optimisée: taille={signer_stamp.size}, mode={signer_stamp.mode}")
+    
+    # IMPORTANT: Appliquer le sticker "Signed by" UNE SEULE FOIS au début, AVANT toute signature
+    if signer_stamp is not None:
+        try:
+            current_app.logger.info(f"🎨 Application du sticker 'Signed by' à l'image de signature...")
+            signer_stamp = create_signed_by_sticker(signer_stamp)
+            current_app.logger.info(f"✅ Sticker appliqué - Nouvelle taille: {signer_stamp.size}")
+        except Exception as sticker_error:
+            import traceback
+            error_msg = f"ERREUR STICKER: {str(sticker_error)}\n{traceback.format_exc()}"
+            current_app.logger.error(f"❌ {error_msg}")
+            # Re-lever l'erreur pour qu'elle soit capturée par le gestionnaire principal
+            raise Exception(f"Erreur lors de l'application du sticker: {str(sticker_error)}") from sticker_error
+    else:
+        current_app.logger.warning(f"⚠️ signer_stamp est None, impossible d'appliquer le sticker")
+    
     intermediate_buffer = pdf_buffer
+    
+    if signer_stamp is not None and isinstance(signer_stamp, Image.Image):
+        img_width, img_height = signer_stamp.size
+        if img_width > 0 and img_height > 0:
+            aspect_ratio = img_height / img_width
+            # Si seule la largeur est personnalisée (pas de height explicite), calculer la hauteur selon le ratio
+            if not (signature_size and isinstance(signature_size, dict) and signature_size.get('height')):
+                box_height = int(box_width * aspect_ratio)
+                box_height = max(40, min(200, box_height))
+            current_app.logger.info(f"📏 Boîte finale: {box_width}x{box_height} pts (image: {img_width}x{img_height}, ratio: {aspect_ratio:.2f})")
+    
+    # Pour les signatures simples (non-workflow), ajouter les textes AVANT les signatures
+    # Pour les workflows, ne rien ajouter pour ne pas invalider les signatures précédentes
+    if signer_info and not is_workflow:
+        current_app.logger.info(f"📝 Ajout des textes d'informations AVANT les signatures (signature simple)")
+        for page_params in pages:
+            page_index = page_params.get("page", 0)
+            signatures = page_params.get("signatures", [])
+            
+            for signature in signatures:
+                try:
+                    x = mm_to_points(signature.get("x", 50))
+                    y = mm_to_points(signature.get("y", 100))
+                    
+                    intermediate_buffer = add_signer_info_text(
+                        intermediate_buffer,
+                        page_index,
+                        x,
+                        y,
+                        signer_info,
+                        box_width=box_width,
+                        box_height=box_height
+                    )
+                    current_app.logger.info(f"✅ Texte ajouté pour page {page_index} à position ({x}, {y}) avec boîte {box_width}x{box_height}")
+                except Exception as e:
+                    current_app.logger.error(f"⚠️ Erreur lors de l'ajout du texte: {str(e)}")
+                    # Continue quand même
+    
+    # Maintenant appliquer toutes les signatures sur le PDF (avec ou sans textes selon le cas)
     for page_params in pages:
         page_index = page_params.get("page", 0)
         signatures = page_params.get("signatures", [])
@@ -731,7 +1129,7 @@ def sign_pdf_pages(pdf_buffer, pages, signer, signer_stamp):
                 field_name = f"Signature_{uuid.uuid4().hex}"
                 sig_field_spec = SigFieldSpec(
                     sig_field_name=field_name,
-                    box=(x, y, x + 150, y + 100),
+                    box=(x, y, x + box_width, y + box_height),
                     on_page=page_index
                 )
                 append_signature_field(pdf_writer, sig_field_spec)
@@ -741,7 +1139,7 @@ def sign_pdf_pages(pdf_buffer, pages, signer, signer_stamp):
                     signer=signer,
                     stamp_style=stamp.StaticStampStyle(
                         background=images.PdfImage(signer_stamp),
-                        background_opacity=0.7,
+                        background_opacity=0.9,
                         border_width=0
                     )
                 )
@@ -749,6 +1147,7 @@ def sign_pdf_pages(pdf_buffer, pages, signer, signer_stamp):
                 output_buffer = BytesIO()
                 pdf_signer.sign_pdf(pdf_writer, output=output_buffer)
                 intermediate_buffer = BytesIO(output_buffer.getvalue())
+                
             except Exception as e:
                 raise Exception(f"Erreur lors de la signature sur la page {page_index}: {str(e)}")
     return intermediate_buffer
@@ -840,7 +1239,7 @@ def notify_next_signer(document_id):
                 continue
 
             # Préparer le contenu de l'email
-            subject = "Document à signer"
+            subject = "Document to Sign"
             body = f"Bonjour {recipient_name},\n\nVous avez un document à signer.\n\nVotre code OTP : {otp}\n\nLien de signature : {sign_link}"
             html = render_template(
                 "sign_document_email.html",
@@ -978,7 +1377,7 @@ def notify_next_flow_signer(document_id, flow_id, current_signer_id=None):
             sign_link = f"https://dkb-sign-ui.vercel.app/flow-docs/verify?flow_id={flow_id}&user_id={next_flow.user_id}"
 
             # Préparer le contenu de l'email
-            subject = "Document à signer (Workflow)"
+            subject = "Document to Sign (Workflow)"
             body = f"""Bonjour {recipient_name},
 
 Vous avez un document à signer dans le cadre d'un workflow.

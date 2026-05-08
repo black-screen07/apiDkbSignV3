@@ -134,7 +134,7 @@ def register_individual():
         # Génération du lien pour définir le mot de passe
         reset_url = f"https://dkb-sign-ui.vercel.app/auth/new-password?uuid={new_user.uuid}"
 
-        subject = "Définissez votre mot de passe"
+        subject = "Set Your Password"
         body = f"Bonjour {name},\n\nVeuillez cliquer sur le lien suivant pour définir votre mot de passe : {reset_url}"
 
         # Rendu du template HTML pour l'email
@@ -342,7 +342,7 @@ def register_employee():
         reset_url = f"https://dkb-sign-ui.vercel.app/auth/new-password?uuid={new_employee.uuid}"  # À adapter selon votre frontend
 
         # Envoi de l'email pour définir le mot de passe
-        subject = "Définir votre mot de passe"
+        subject = "Set Your Password"
         body = f"Bonjour {name},\n\nVeuillez cliquer sur le lien suivant pour définir votre mot de passe : {reset_url}"
         html = render_template(
             'password_reset_email.html',
@@ -428,7 +428,7 @@ def set_password():
         db.session.commit()
 
         # Envoyer le PIN par email
-        subject = "Votre code PIN de signature - DKB-Sign"
+        subject = "Your Signature PIN Code - DKB-Sign"
         body = (
             f"Bonjour {user.name},\n\n"
             f"Votre mot de passe a été modifié avec succès.\n"
@@ -896,7 +896,7 @@ def change_password():
         db.session.commit()
 
         # Envoyer un email de confirmation
-        subject = "Modification de votre mot de passe - DKB-Sign"
+        subject = "Password Change - DKB-Sign"
         body = (
             f"Bonjour {user.name},\n\n"
             f"Votre mot de passe a été modifié avec succès.\n\n"
@@ -940,7 +940,7 @@ def generate_app_key():
         db.session.commit()
 
         # Envoyer un email de notification
-        subject = "Nouvelle clé API générée - DKB-Sign"
+        subject = "New API Key Generated - DKB-Sign"
         body = (
             f"Bonjour {user.name},\n\n"
             f"Une nouvelle clé API a été générée pour votre compte.\n\n"

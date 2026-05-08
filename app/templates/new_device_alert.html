@@ -187,55 +187,55 @@
         </div>
 
         <!-- TITRE DE L'EMAIL -->
-        <h2>Nouvelle connexion détectée</h2>
+        <h2>New Login Detected</h2>
 
         <!-- MESSAGE D'INTRODUCTION -->
         {% if is_first_device %}
         <p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;color:#666666;font-size:14px">
-            C'est la première fois que vous vous connectez à votre compte. Pour votre sécurité, nous vous informons de cette connexion.
-            Vous pouvez approuver cet appareil pour ne plus recevoir d'alertes, ou le bloquer si vous ne reconnaissez pas cette activité.
+            This is the first time you are logging into your account. For your security, we are informing you of this login.
+            You can approve this device to stop receiving alerts, or block it if you don't recognize this activity.
         </p>
         {% else %}
         <p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;color:#666666;font-size:14px">
-            Une nouvelle connexion a été détectée sur votre compte. Pour votre sécurité, veuillez vérifier les détails ci-dessous
-            et choisir si vous souhaitez approuver ou bloquer cet appareil.
+            A new login has been detected on your account. For your security, please verify the details below
+            and choose whether you want to approve or block this device.
         </p>
         {% endif %}
-        <p>Bonjour <strong>{{ user_name }}</strong> 👋</p>
+        <p>Hello <strong>{{ user_name }}</strong> 👋</p>
 
         <!-- INFORMATIONS SUR L'APPAREIL -->
         <div class="device-info">
-            <h3>📱 Détails de la connexion :</h3>
+            <h3>📱 Login Details:</h3>
             <ul>
-                <li><span class="emoji-icon">🕒</span> <strong>Date et heure :</strong> {{ login_time }}</li>
-                <li><span class="emoji-icon">🌐</span> <strong>Navigateur :</strong> {{ browser }} {{ browser_version }}</li>
-                <li><span class="emoji-icon">💻</span> <strong>Système :</strong> {{ os }} {{ os_version }}</li>
-                <li><span class="emoji-icon">🌍</span> <strong>Adresse IP :</strong> {{ ip_address }}</li>
-                <li><span class="emoji-icon">📱</span> <strong>Type d'appareil :</strong> {{ device_type }}</li>
+                <li><span class="emoji-icon">🕒</span> <strong>Date and Time:</strong> {{ login_time }}</li>
+                <li><span class="emoji-icon">🌐</span> <strong>Browser:</strong> {{ browser }} {{ browser_version }}</li>
+                <li><span class="emoji-icon">💻</span> <strong>System:</strong> {{ os }} {{ os_version }}</li>
+                <li><span class="emoji-icon">🌍</span> <strong>IP Address:</strong> {{ ip_address }}</li>
+                <li><span class="emoji-icon">📱</span> <strong>Device Type:</strong> {{ device_type }}</li>
             </ul>
         </div>
 
         <!-- MESSAGE D'ALERTE SI CE N'EST PAS VOUS -->
         <div class="warning">
-            <p><strong>⚠️ Si vous ne reconnaissez pas cette activité :</strong></p>
+            <p><strong>⚠️ If you don't recognize this activity:</strong></p>
             <ul>
-                <li>🔑 Changez immédiatement votre mot de passe</li>
-                <li>📞 Contactez notre support technique</li>
-                <li>📋 Vérifiez l'historique récent de votre compte</li>
+                <li>🔑 Change your password immediately</li>
+                <li>📞 Contact our technical support</li>
+                <li>📋 Check your recent account history</li>
             </ul>
         </div>
 
         <!-- BOUTONS D'ACTION -->
         <div class="button-container">
-            <a href="{{ approve_link }}" class="button button-approve">✓ Approuver cet appareil</a>
-            <a href="{{ block_link }}" class="button button-danger">⚠ Bloquer cet appareil</a>
-            <a href="{{ support_link }}" class="button">Contacter le support</a>
+            <a href="{{ approve_link }}" class="button button-approve">✓ Approve This Device</a>
+            <a href="{{ block_link }}" class="button button-danger">⚠ Block This Device</a>
+            <a href="{{ support_link }}" class="button">Contact Support</a>
         </div>
 
         <!-- PIED DE PAGE -->
         <div class="footer">
-            <p>✉️ Cet e-mail a été envoyé automatiquement pour votre sécurité.<br>Merci de ne pas y répondre directement.</p>
-            <p>© {{ current_year }} DKB Sign. Tous droits réservés. 🔒</p>
+            <p>✉️ This email was sent automatically for your security.<br>Please do not reply directly.</p>
+            <p>© {{ current_year }} DKB Sign. All rights reserved. 🔒</p>
         </div>
     </div>
 </body>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document signé - DKBSign</title>
+    <title>Document Signed - DKBSign</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -70,43 +70,43 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Document signé</h1>
+            <h1>Document Signed</h1>
         </div>
         <div class="content">
-            <p>Bonjour {{ name }},</p>
+            <p>Hello {{ name }},</p>
             
-            <p>Le processus de signature est maintenant terminé pour le document suivant :</p>
+            <p>The signing process is now complete for the following document:</p>
             
             <div class="info-box">
                 <div class="info-item">
-                    <span class="info-label">Document :</span>
+                    <span class="info-label">Document:</span>
                     <span>{{ document_name }}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Workflow :</span>
+                    <span class="info-label">Workflow:</span>
                     <span>{{ workflow_name }}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Référence :</span>
+                    <span class="info-label">Reference:</span>
                     <span>{{ reference }}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Date de finalisation :</span>
+                    <span class="info-label">Completion date:</span>
                     <span>{{ completion_date }}</span>
                 </div>
             </div>
 
-            <p>Vous pouvez télécharger le document final signé en cliquant sur le lien suivant :</p>
+            <p>You can download the final signed document by clicking the following link:</p>
             <center>
-                <a href="{{ download_url }}" class="button">Télécharger le document</a>
+                <a href="{{ download_url }}" class="button">Download Document</a>
             </center>
             
-            <p class="note">Ce document a été signé électroniquement via la plateforme DKBSign. La signature électronique est juridiquement valable conformément au règlement eIDAS.</p>
+            <p class="note">This document has been electronically signed via the DKBSign platform. Electronic signatures are legally valid in accordance with eIDAS regulations.</p>
         </div>
         
         <div class="footer">
-            <p>Cet email a été envoyé automatiquement par DKBSign. Merci de ne pas y répondre.</p>
-            <p> 2025 DKBSign. Tous droits réservés.</p>
+            <p>This email was sent automatically by DKBSign. Please do not reply.</p>
+            <p>&copy; 2025 DKBSign. All rights reserved.</p>
         </div>
     </div>
 </body>

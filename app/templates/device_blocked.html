@@ -85,31 +85,31 @@
             🛡️ DKB Sign
         </div>
         
-        <h2>Appareil bloqué avec succès</h2>
+        <h2>Device Successfully Blocked</h2>
 
-        <p>Bonjour <strong>{{ user_name }}</strong> 👋</p>
+        <p>Hello <strong>{{ user_name }}</strong> 👋</p>
 
-        <p>✅ L'appareil suspect a été bloqué avec succès. Toute tentative de connexion depuis cet appareil sera désormais refusée.</p>
+        <p>✅ The suspicious device has been successfully blocked. Any login attempts from this device will now be denied.</p>
 
         <div class="device-info">
-            <h3>📱 Détails de l'appareil bloqué :</h3>
+            <h3>📱 Blocked Device Details:</h3>
             <ul>
-                <li><span class="emoji-icon">🌐</span> <strong>Navigateur :</strong> {{ device_info.browser }}</li>
-                <li><span class="emoji-icon">🌍</span> <strong>Adresse IP :</strong> {{ device_info.ip }}</li>
-                <li><span class="emoji-icon">🕒</span> <strong>Dernière connexion :</strong> {{ device_info.last_login }}</li>
+                <li><span class="emoji-icon">🌐</span> <strong>Browser:</strong> {{ device_info.browser }}</li>
+                <li><span class="emoji-icon">🌍</span> <strong>IP Address:</strong> {{ device_info.ip }}</li>
+                <li><span class="emoji-icon">🕒</span> <strong>Last login:</strong> {{ device_info.last_login }}</li>
             </ul>
         </div>
 
-        <p>🔒 Pour plus de sécurité, nous vous recommandons de :</p>
+        <p>🔒 For additional security, we recommend you:</p>
         <ul>
-            <li>🔑 Changer votre mot de passe</li>
-            <li>📱 Activer l'authentification à deux facteurs si ce n'est pas déjà fait</li>
-            <li>👥 Vérifier les autres appareils connectés à votre compte</li>
+            <li>🔑 Change your password</li>
+            <li>📱 Enable two-factor authentication if not already done</li>
+            <li>👥 Check other devices connected to your account</li>
         </ul>
 
         <div class="footer">
-            <p>✉️ Cet email a été envoyé automatiquement pour votre sécurité.<br>Merci de ne pas y répondre directement.</p>
-            <p>© {{ current_year }} DKB Sign. Tous droits réservés. 🔒</p>
+            <p>✉️ This email was sent automatically for your security.<br>Please do not reply directly.</p>
+            <p>© {{ current_year }} DKB Sign. All rights reserved. 🔒</p>
         </div>
     </div>
 </body>

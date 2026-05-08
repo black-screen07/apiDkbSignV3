@@ -49,21 +49,21 @@
 </head>
 <body>
     <div class="header">
-        <h2>Document en attente de signature</h2>
+        <h2>Document Awaiting Signature</h2>
     </div>
     
     <div class="content">
-        <p>Bonjour,</p>
+        <p>Hello,</p>
         
-        <p>Un document nécessite votre signature dans le cadre d'un workflow de signature.</p>
+        <p>A document requires your signature as part of a signature workflow.</p>
         
-        <p><strong>Détails du document :</strong></p>
+        <p><strong>Document details:</strong></p>
         <ul>
-            <li>Nom du document : {{ document_name }}</li>
+            <li>Document name: {{ document_name }}</li>
         </ul>
 
         <div class="actions">
-            <p><strong>Actions requises :</strong></p>
+            <p><strong>Required actions:</strong></p>
             <ul>
                 {% for action in actions %}
                 <li>{{ action }}</li>
@@ -71,12 +71,12 @@
             </ul>
         </div>
 
-        <p>Pour accéder au document et effectuer les actions requises, veuillez vous connecter à la plateforme.</p>
+        <p>To access the document and perform the required actions, please log in to the platform.</p>
     </div>
     
     <div class="footer">
-        <p>Cet email a été envoyé automatiquement. Merci de ne pas y répondre.</p>
-        <p>© 2024 DKB Sign. Tous droits réservés.</p>
+        <p>This email was sent automatically. Please do not reply.</p>
+        <p>© 2024 DKB Sign. All rights reserved.</p>
     </div>
 </body>
 </html>

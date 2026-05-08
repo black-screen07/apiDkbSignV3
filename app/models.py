@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import Enum
 import uuid
 import secrets
+import hashlib
 from sqlalchemy.orm import validates
 
 
@@ -54,6 +55,7 @@ class User(db.Model):
     address = db.Column(db.String(255), nullable=False)
     city = db.Column(db.String(255), nullable=False)
     country = db.Column(db.String(255), nullable=False)
+    #language = db.Column(db.String(255), nullable=False) #langue du user
     cni_number = db.Column(db.String(255), nullable=True)
     account_type = db.Column(db.String(20), nullable=False)  # "individual" ou "employee"
     company_id = db.Column(db.Integer, db.ForeignKey('companies.id'), nullable=True)  # Null pour les individus
@@ -188,8 +190,9 @@ class DocumentConsent(db.Model):
     __tablename__ = 'document_consents'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=True)
+    email = db.Column(db.String(255), nullable=True, index=True)
     batch_id = db.Column(db.String(36), nullable=True)  # UUID pour regrouper les consentements
     consented_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     terms_version = db.Column(db.String(50), nullable=True)  # Version des conditions acceptées, facultatif
@@ -203,9 +206,10 @@ class DocumentConsent(db.Model):
     user = db.relationship('User', backref='document_consents', lazy=True)
     document = db.relationship('Document', backref='consents', lazy=True)
 
-    def __init__(self, user_id, document_id, terms_version=None, batch_id=None):
+    def __init__(self, user_id=None, document_id=None, terms_version=None, batch_id=None, email=None):
         self.user_id = user_id
         self.document_id = document_id
+        self.email = email
         self.terms_version = terms_version
         self.batch_id = batch_id
         self.consented_at = datetime.utcnow()
@@ -450,3 +454,389 @@ class UserDevice(db.Model):
         db.Index('idx_user_device_fingerprint', 'user_id', 'device_fingerprint'),
         db.Index('idx_user_device_status', 'user_id', 'status'),
     )
+
+
+class SignatureProof(db.Model):
+    """
+    Preuve de signature électronique de classe mondiale.
+    Conforme eIDAS, ESIGN Act, ZertES.
+    Stocke l'intégralité des métadonnées cryptographiques, contextuelles,
+    réseau, appareil, géolocalisation et audit trail.
+    """
+    __tablename__ = 'signature_proofs'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    proof_id = db.Column(db.String(64), unique=True, nullable=False)
+    transaction_id = db.Column(db.String(64), unique=True, nullable=False)  # ID de transaction global
+
+    # ──────────────────────────────────────────────
+    # 1. INFORMATIONS PLATEFORME
+    # ──────────────────────────────────────────────
+    platform_name = db.Column(db.String(100), nullable=False, default='DKB-Sign')
+    platform_provider = db.Column(db.String(100), nullable=False, default='DKB Technologies')
+    platform_url = db.Column(db.String(255), nullable=True)
+    api_version = db.Column(db.String(20), nullable=False, default='v3')
+    signature_engine_version = db.Column(db.String(50), nullable=False, default='PyHanko 0.25.x')
+    environment = db.Column(db.String(20), nullable=False, default='production')  # production / sandbox
+
+    # ──────────────────────────────────────────────
+    # 2. INFORMATIONS DOCUMENT
+    # ──────────────────────────────────────────────
+    document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=True)
+    document_name = db.Column(db.String(255), nullable=False)
+    document_type = db.Column(db.String(20), nullable=False, default='PDF')
+    document_size_bytes = db.Column(db.BigInteger, nullable=True)
+    document_page_count = db.Column(db.Integer, nullable=True)
+    document_version = db.Column(db.String(50), nullable=True, default='1.0')
+    document_hash_original = db.Column(db.String(64), nullable=True)     # SHA-256 du document original
+    document_hash_signed = db.Column(db.String(64), nullable=True)       # SHA-256 du document signé
+    document_created_at = db.Column(db.DateTime, nullable=True)
+    document_finalized_at = db.Column(db.DateTime, nullable=True)
+    document_status = db.Column(db.String(20), nullable=False, default='completed')  # completed / declined / expired
+    signed_file_path = db.Column(db.String(500), nullable=True)
+
+    # ──────────────────────────────────────────────
+    # 3. INFORMATIONS SIGNATAIRE
+    # ──────────────────────────────────────────────
+    signer_id = db.Column(db.Integer, nullable=False)
+    signer_type = db.Column(db.String(20), nullable=False)  # user / contact / external
+    signer_name = db.Column(db.String(255), nullable=False)
+    signer_first_name = db.Column(db.String(255), nullable=True)
+    signer_email = db.Column(db.String(255), nullable=False)
+    signer_phone = db.Column(db.String(255), nullable=True)
+    signer_organization = db.Column(db.String(255), nullable=True)
+    signer_role = db.Column(db.String(50), nullable=True, default='signer')  # signer / approver
+
+    # Méthodes d'identification utilisées
+    id_method_email = db.Column(db.Boolean, default=False)
+    id_method_sms_otp = db.Column(db.Boolean, default=False)
+    id_method_identity_verified = db.Column(db.Boolean, default=False)
+    id_method_certificate = db.Column(db.Boolean, default=False)
+    id_method_oauth_sso = db.Column(db.Boolean, default=False)
+
+    # ──────────────────────────────────────────────
+    # 4. INFORMATIONS DE SIGNATURE
+    # ──────────────────────────────────────────────
+    signed_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    signature_type = db.Column(db.String(50), nullable=True)  # drawn / typed / click-to-sign / certificate
+    signature_method = db.Column(db.String(50), nullable=False)  # api_key / jwt / otp / flow
+    consent_explicit = db.Column(db.Boolean, default=False)
+    timestamp_utc = db.Column(db.String(50), nullable=True)
+    timezone = db.Column(db.String(50), nullable=True)
+    signature_hash = db.Column(db.String(64), nullable=True)  # SHA-256 de la signature elle-même
+    signature_page = db.Column(db.Integer, nullable=True)
+    signature_x = db.Column(db.Float, nullable=True)
+    signature_y = db.Column(db.Float, nullable=True)
+    signature_positions = db.Column(db.JSON, nullable=True)  # Toutes les positions si multi-pages
+
+    # ──────────────────────────────────────────────
+    # 5. ADRESSE IP (PREUVE RÉSEAU)
+    # ──────────────────────────────────────────────
+    ip_public = db.Column(db.String(50), nullable=True)
+    ip_local = db.Column(db.String(50), nullable=True)
+    ip_version = db.Column(db.String(10), nullable=True)  # IPv4 / IPv6
+    ip_asn = db.Column(db.String(100), nullable=True)      # Autonomous System Number
+    ip_isp = db.Column(db.String(255), nullable=True)      # Fournisseur internet
+
+    # ──────────────────────────────────────────────
+    # 6. GÉOLOCALISATION
+    # ──────────────────────────────────────────────
+    geo_latitude = db.Column(db.Float, nullable=True)
+    geo_longitude = db.Column(db.Float, nullable=True)
+    geo_country = db.Column(db.String(100), nullable=True)
+    geo_region = db.Column(db.String(100), nullable=True)
+    geo_city = db.Column(db.String(100), nullable=True)
+    geo_postal_code = db.Column(db.String(20), nullable=True)
+    geo_timezone = db.Column(db.String(50), nullable=True)
+    geo_accuracy = db.Column(db.String(50), nullable=True)
+
+    # ──────────────────────────────────────────────
+    # 7. INFORMATIONS APPAREIL
+    # ──────────────────────────────────────────────
+    device_user_agent = db.Column(db.String(500), nullable=True)
+    device_browser = db.Column(db.String(100), nullable=True)
+    device_browser_version = db.Column(db.String(50), nullable=True)
+    device_os = db.Column(db.String(100), nullable=True)
+    device_os_version = db.Column(db.String(50), nullable=True)
+    device_type = db.Column(db.String(50), nullable=True)  # desktop / mobile / tablet
+    device_fingerprint = db.Column(db.String(500), nullable=True)
+
+    # ──────────────────────────────────────────────
+    # 8. CONSENTEMENT LÉGAL
+    # ──────────────────────────────────────────────
+    consent_text = db.Column(db.Text, nullable=True)
+    consent_accepted = db.Column(db.Boolean, default=False)
+    consent_timestamp = db.Column(db.DateTime, nullable=True)
+    consent_ip = db.Column(db.String(50), nullable=True)
+    otp_verified = db.Column(db.Boolean, default=False)
+    otp_verified_at = db.Column(db.DateTime, nullable=True)
+    pin_verified = db.Column(db.Boolean, default=False)
+
+    # ──────────────────────────────────────────────
+    # 10. CERTIFICATS CRYPTOGRAPHIQUES
+    # ──────────────────────────────────────────────
+    cert_signer_subject = db.Column(db.String(500), nullable=True)
+    cert_signer_issuer = db.Column(db.String(500), nullable=True)
+    cert_signer_serial = db.Column(db.String(255), nullable=True)
+    cert_signer_valid_from = db.Column(db.DateTime, nullable=True)
+    cert_signer_valid_to = db.Column(db.DateTime, nullable=True)
+    cert_signer_algorithm = db.Column(db.String(50), nullable=True)  # RSA / ECDSA
+    cert_signer_public_key = db.Column(db.Text, nullable=True)
+    cert_signer_type = db.Column(db.String(50), nullable=True)  # cachetServeur / personnePhysique
+    cert_platform_subject = db.Column(db.String(500), nullable=True)
+    cert_chain = db.Column(db.Text, nullable=True)  # Chaîne de certificats complète (PEM)
+
+    # ──────────────────────────────────────────────
+    # 11. VÉRIFICATION D'INTÉGRITÉ
+    # ──────────────────────────────────────────────
+    hash_document = db.Column(db.String(64), nullable=True)     # SHA-256
+    hash_signature = db.Column(db.String(64), nullable=True)    # SHA-256
+    hash_audit_trail = db.Column(db.String(64), nullable=True)  # SHA-256
+    hash_proof = db.Column(db.String(128), nullable=False)      # SHA-512 de la preuve complète
+
+    # ──────────────────────────────────────────────
+    # 12. QR CODE DE VÉRIFICATION
+    # ──────────────────────────────────────────────
+    qr_verification_url = db.Column(db.String(500), nullable=True)
+    qr_transaction_id = db.Column(db.String(64), nullable=True)
+    qr_document_hash = db.Column(db.String(64), nullable=True)
+
+    # ──────────────────────────────────────────────
+    # MÉTADONNÉES DE LA PREUVE
+    # ──────────────────────────────────────────────
+    company_name = db.Column(db.String(255), nullable=True)
+    company_id = db.Column(db.Integer, nullable=True)
+    flow_id = db.Column(db.Integer, nullable=True)
+    flow_priority = db.Column(db.Integer, nullable=True)
+    batch_id = db.Column(db.String(36), nullable=True)
+    proof_generated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    proof_pdf_path = db.Column(db.String(500), nullable=True)
+
+    # Relations
+    document = db.relationship('Document', backref=db.backref('signature_proofs', lazy=True))
+    audit_events = db.relationship('SignatureAuditEvent', backref='proof', lazy=True,
+                                   order_by='SignatureAuditEvent.timestamp')
+
+    __table_args__ = (
+        db.Index('idx_proof_document', 'document_id'),
+        db.Index('idx_proof_signer', 'signer_id', 'signer_type'),
+        db.Index('idx_proof_id', 'proof_id'),
+        db.Index('idx_proof_transaction', 'transaction_id'),
+    )
+
+    def compute_proof_hash(self):
+        """Calcule le hash SHA-512 de toutes les données critiques de la preuve."""
+        data = (
+            f"{self.proof_id}|{self.transaction_id}|"
+            f"{self.document_id}|{self.document_name}|"
+            f"{self.document_hash_original or ''}|{self.document_hash_signed or ''}|"
+            f"{self.signer_id}|{self.signer_type}|{self.signer_name}|{self.signer_email}|"
+            f"{self.cert_signer_serial or ''}|"
+            f"{self.signed_at.isoformat() if self.signed_at else ''}|"
+            f"{self.consent_accepted}|{self.otp_verified}|{self.pin_verified}|"
+            f"{self.signature_method}|{self.signature_hash or ''}|"
+            f"{self.ip_public or ''}|"
+            f"{self.hash_audit_trail or ''}"
+        )
+        self.hash_proof = hashlib.sha512(data.encode('utf-8')).hexdigest()
+        return self.hash_proof
+
+    def compute_audit_trail_hash(self):
+        """Calcule le hash SHA-256 de l'audit trail lié à cette preuve."""
+        events = SignatureAuditEvent.query.filter_by(proof_id=self.id).order_by(
+            SignatureAuditEvent.timestamp.asc()
+        ).all()
+        trail_data = '|'.join(
+            f"{e.event_type}:{e.timestamp.isoformat()}:{e.ip_address or ''}"
+            for e in events
+        )
+        self.hash_audit_trail = hashlib.sha256(trail_data.encode('utf-8')).hexdigest()
+        return self.hash_audit_trail
+
+    def verify_integrity(self):
+        """Vérifie que la preuve n'a pas été altérée."""
+        original_hash = self.hash_proof
+        self.compute_proof_hash()
+        is_valid = original_hash == self.hash_proof
+        if not is_valid:
+            self.hash_proof = original_hash
+        return is_valid
+
+    def to_dict(self):
+        """Sérialise la preuve complète en dictionnaire."""
+        return {
+            "proof_id": self.proof_id,
+            "transaction_id": self.transaction_id,
+            # 1. Plateforme
+            "platform": {
+                "name": self.platform_name,
+                "provider": self.platform_provider,
+                "url": self.platform_url,
+                "api_version": self.api_version,
+                "signature_engine_version": self.signature_engine_version,
+                "environment": self.environment,
+            },
+            # 2. Document
+            "document": {
+                "id": self.document_id,
+                "name": self.document_name,
+                "type": self.document_type,
+                "size_bytes": self.document_size_bytes,
+                "page_count": self.document_page_count,
+                "version": self.document_version,
+                "hash_original": self.document_hash_original,
+                "hash_signed": self.document_hash_signed,
+                "created_at": self.document_created_at.isoformat() if self.document_created_at else None,
+                "finalized_at": self.document_finalized_at.isoformat() if self.document_finalized_at else None,
+                "status": self.document_status,
+            },
+            # 3. Signataire
+            "signer": {
+                "id": self.signer_id,
+                "type": self.signer_type,
+                "name": self.signer_name,
+                "first_name": self.signer_first_name,
+                "email": self.signer_email,
+                "phone": self.signer_phone,
+                "organization": self.signer_organization,
+                "role": self.signer_role,
+                "identification_methods": {
+                    "email_verification": self.id_method_email,
+                    "sms_otp": self.id_method_sms_otp,
+                    "identity_verified": self.id_method_identity_verified,
+                    "digital_certificate": self.id_method_certificate,
+                    "oauth_sso": self.id_method_oauth_sso,
+                },
+            },
+            # 4. Signature
+            "signature": {
+                "timestamp": self.signed_at.isoformat() if self.signed_at else None,
+                "type": self.signature_type,
+                "method": self.signature_method,
+                "consent_explicit": self.consent_explicit,
+                "timestamp_utc": self.timestamp_utc,
+                "timezone": self.timezone,
+                "hash": self.signature_hash,
+                "page": self.signature_page,
+                "x": self.signature_x,
+                "y": self.signature_y,
+                "positions": self.signature_positions,
+            },
+            # 5. Réseau
+            "network": {
+                "ip_public": self.ip_public,
+                "ip_local": self.ip_local,
+                "ip_version": self.ip_version,
+                "asn": self.ip_asn,
+                "isp": self.ip_isp,
+            },
+            # 6. Géolocalisation
+            "geolocation": {
+                "latitude": self.geo_latitude,
+                "longitude": self.geo_longitude,
+                "country": self.geo_country,
+                "region": self.geo_region,
+                "city": self.geo_city,
+                "postal_code": self.geo_postal_code,
+                "timezone": self.geo_timezone,
+                "accuracy": self.geo_accuracy,
+            },
+            # 7. Appareil
+            "device": {
+                "user_agent": self.device_user_agent,
+                "browser": self.device_browser,
+                "browser_version": self.device_browser_version,
+                "os": self.device_os,
+                "os_version": self.device_os_version,
+                "type": self.device_type,
+                "fingerprint": self.device_fingerprint,
+            },
+            # 8. Consentement
+            "consent": {
+                "text": self.consent_text,
+                "accepted": self.consent_accepted,
+                "timestamp": self.consent_timestamp.isoformat() if self.consent_timestamp else None,
+                "ip": self.consent_ip,
+                "otp_verified": self.otp_verified,
+                "otp_verified_at": self.otp_verified_at.isoformat() if self.otp_verified_at else None,
+                "pin_verified": self.pin_verified,
+            },
+            # 9. Audit Trail
+            "audit_trail": [e.to_dict() for e in self.audit_events] if self.audit_events else [],
+            # 10. Certificats
+            "certificates": {
+                "signer": {
+                    "subject": self.cert_signer_subject,
+                    "issuer": self.cert_signer_issuer,
+                    "serial": self.cert_signer_serial,
+                    "valid_from": self.cert_signer_valid_from.isoformat() if self.cert_signer_valid_from else None,
+                    "valid_to": self.cert_signer_valid_to.isoformat() if self.cert_signer_valid_to else None,
+                    "algorithm": self.cert_signer_algorithm,
+                    "type": self.cert_signer_type,
+                },
+                "platform": {
+                    "subject": self.cert_platform_subject,
+                },
+                "chain_present": bool(self.cert_chain),
+            },
+            # 11. Intégrité
+            "integrity": {
+                "hash_document": self.hash_document,
+                "hash_signature": self.hash_signature,
+                "hash_audit_trail": self.hash_audit_trail,
+                "hash_proof": self.hash_proof,
+                "is_valid": self.verify_integrity(),
+            },
+            # 12. QR Code
+            "qr_verification": {
+                "url": self.qr_verification_url,
+                "transaction_id": self.qr_transaction_id,
+                "document_hash": self.qr_document_hash,
+            },
+            # Métadonnées
+            "company": {
+                "name": self.company_name,
+                "id": self.company_id,
+            } if self.company_name else None,
+            "workflow": {
+                "flow_id": self.flow_id,
+                "priority": self.flow_priority,
+                "batch_id": self.batch_id,
+            } if self.flow_id else None,
+            "proof_generated_at": self.proof_generated_at.isoformat() if self.proof_generated_at else None,
+        }
+
+
+class SignatureAuditEvent(db.Model):
+    """
+    Journal complet des événements liés à une signature.
+    Chaque action (création, envoi email, consultation, OTP, signature, etc.)
+    est enregistrée avec horodatage, IP et détails.
+    """
+    __tablename__ = 'signature_audit_events'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    proof_id = db.Column(db.Integer, db.ForeignKey('signature_proofs.id'), nullable=False)
+    event_type = db.Column(db.String(50), nullable=False)
+    # Types: document_created, email_sent, email_opened, link_clicked,
+    #        document_viewed, otp_sent, otp_verified, consent_given,
+    #        signature_added, document_completed, document_declined
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    ip_address = db.Column(db.String(50), nullable=True)
+    user_agent = db.Column(db.String(500), nullable=True)
+    details = db.Column(db.JSON, nullable=True)  # Détails supplémentaires
+
+    __table_args__ = (
+        db.Index('idx_audit_proof', 'proof_id'),
+        db.Index('idx_audit_type', 'event_type'),
+        db.Index('idx_audit_timestamp', 'timestamp'),
+    )
+
+    def to_dict(self):
+        return {
+            "event_type": self.event_type,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "ip_address": self.ip_address,
+            "user_agent": self.user_agent,
+            "details": self.details,
+        }

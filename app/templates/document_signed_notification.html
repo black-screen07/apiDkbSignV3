@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Signé - {{ document_name }}</title>
+    <title>Document Signed - {{ document_name }}</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -104,29 +104,29 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎉 Document Signé avec Succès !</h1>
-            <p>Le processus de signature est terminé</p>
+            <h1>🎉 Document Successfully Signed!</h1>
+            <p>The signing process is complete</p>
         </div>
         <div class="content">
-            <p>Bonjour <strong>{{ name }}</strong>,</p>
-            <p>Le document <strong>"{{ document_name }}"</strong> du workflow <strong>{{ workflow_name }}</strong> a été signé par tous les participants.</p>
+            <p>Hello <strong>{{ name }}</strong>,</p>
+            <p>The document <strong>"{{ document_name }}"</strong> from workflow <strong>{{ workflow_name }}</strong> has been signed by all participants.</p>
             
             <div class="info-box">
-                <p><strong>Référence :</strong> {{ reference }}</p>
-                <p><strong>Date de finalisation :</strong> {{ completion_date }}</p>
+                <p><strong>Reference:</strong> {{ reference }}</p>
+                <p><strong>Completion Date:</strong> {{ completion_date }}</p>
             </div>
 
-            <p>Vous pouvez télécharger le document signé en cliquant sur le bouton ci-dessous :</p>
+            <p>You can download the signed document by clicking the button below:</p>
             <center>
-                <a href="{{ download_url }}" class="download-button">📥 Télécharger le Document</a>
+                <a href="{{ download_url }}" class="download-button">📥 Download Document</a>
             </center>
 
-            <p>Merci d'avoir utilisé nos services.</p>
-            <p>Cordialement,<br>L'équipe <strong>DKB Sign</strong></p>
+            <p>Thank you for using our services.</p>
+            <p>Best regards,<br>The <strong>DKB Sign</strong> team</p>
         </div>
         <div class="footer">
-            <p>&copy; {{ current_year }} DKB Sign. Tous droits réservés.</p>
-            <p>Pour toute question, n'hésitez pas à <a href="mailto:support@dkbsign.com">nous contacter</a>.</p>
+            <p>&copy; {{ current_year }} DKB Sign. All rights reserved.</p>
+            <p>For any questions, feel free to <a href="mailto:support@dkbsign.com">contact us</a>.</p>
         </div>
     </div>
 </body>

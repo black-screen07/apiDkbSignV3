@@ -197,7 +197,7 @@ def assign_only():
                 # car ils n'ont pas de compte pour se connecter
                 if signer_data.get('account_type') == "external" or not priorities or signer_data in top_priority_signers:
                     sign_url = f"https://dkb-sign-ui.vercel.app/signed-docs/verify?uuid={new_signer.uuid}"
-                    subject = "Veuillez signer le document"
+                    subject = "Please Sign the Document"
                     if urgency != UrgencyEnum.NORMAL:
                         subject = f"[{urgency.upper()}] {subject}"
                     body = (
@@ -218,7 +218,7 @@ def assign_only():
                     )
                 else:
                     # Notification simple (UNIQUEMENT pour les utilisateurs internes avec compte)
-                    subject = "Notification de demande de signature"
+                    subject = "Signature Request Notification"
                     if urgency != UrgencyEnum.NORMAL:
                         subject = f"[{urgency.upper()}] {subject}"
                     body = (

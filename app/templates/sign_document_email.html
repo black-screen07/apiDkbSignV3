@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signature de Document</title>
+    <title>Document Signature</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -85,36 +85,36 @@
 <body>
     <div class="email-container">
         <div class="header">
-            <h1>Signature Requise</h1>
+            <h1>Signature Required</h1>
         </div>
         <div class="content">
-            <p>Bonjour {{ name }},</p>
-            <p>Vous avez été invité(e) à signer le document intitulé <strong>{{ document_name }}</strong>.</p>
+            <p>Hello {{ name }},</p>
+            <p>You have been invited to sign the document titled <strong>{{ document_name }}</strong>.</p>
             
             {% if urgency == 'urgent' %}
-            <p class="urgency-urgent"> Ce document est marqué comme URGENT</p>
+            <p class="urgency-urgent">⚠️ This document is marked as URGENT</p>
             {% elif urgency == 'tres_urgent' %}
-            <p class="urgency-tres-urgent"> Ce document est marqué comme TRÈS URGENT !</p>
+            <p class="urgency-tres-urgent">🚨 This document is marked as VERY URGENT!</p>
             {% endif %}
             
             {% if deadline %}
             <div class="deadline">
-                <p><strong>Date limite de signature :</strong> {{ deadline }}</p>
+                <p><strong>Signature deadline:</strong> {{ deadline }}</p>
             </div>
             {% endif %}
 
-            <p>Votre code OTP pour accéder au document est :</p>
+            <p>Your OTP code to access the document is:</p>
             <p class="otp-code">{{ otp_code }}</p>
-            <p>Cliquez sur le bouton ci-dessous pour accéder au document et le signer :</p>
+            <p>Click the button below to access and sign the document:</p>
             <p style="text-align: center;">
-                <a href="{{ sign_url }}" class="cta-button">Signer le Document</a>
+                <a href="{{ sign_url }}" class="cta-button">Sign the Document</a>
             </p>
-            <p>Merci de compléter cette étape dès que possible.</p>
-            <p>Si vous avez des questions, veuillez nous contacter.</p>
-            <p>Cordialement,<br>L'équipe de DKB-Sign</p>
+            <p>Please complete this step as soon as possible.</p>
+            <p>If you have any questions, please contact us.</p>
+            <p>Best regards,<br>The DKB-Sign team</p>
         </div>
         <div class="footer">
-            <p>&copy; {{ current_year }} DKB-Sign. Tous droits réservés.</p>
+            <p>&copy; {{ current_year }} DKB-Sign. All rights reserved.</p>
         </div>
     </div>
 </body>

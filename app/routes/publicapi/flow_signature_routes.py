@@ -20,14 +20,16 @@ import os
 from datetime import datetime
 from app.models import User, Company, Document, CertTypeEnum, db, Flow, LineFlow, Contact
 from app.services.email_service import send_email
+# NOTE: Système de proof temporairement désactivé en prod (BD non migrée).
+# Ré-activer cet import et les blocs proof correspondants une fois la migration appliquée.
+# from app.services.signature_proof_service import create_signature_proof, build_proof_urls
 from app.utils.public_signature_utils import (
     retrieve_certificates,
     load_signature_image,
     update_signature_volumes,
     add_qr_code_to_pdf,
     generate_qr_code_image,
-    apply_qr_codes,
-    update_signature_volumes
+    apply_qr_codes
 )
 
 publicapi_flow_signature_bp = Blueprint('publicapi_flow_signature_bp', __name__)
@@ -148,6 +150,7 @@ def retrieve_certificates(user, company):
 def load_signature_image(user):
     """
     Charge l'image de signature en fonction de 'current_img_sign'.
+    Applique le pipeline complet: RGBA, trim, upscale haute résolution, netteté.
     """
     if user.current_img_sign == "img":
         signature_path = Path(user.img_sign_path)
@@ -161,7 +164,12 @@ def load_signature_image(user):
     if not signature_path.exists():
         raise FileNotFoundError(f"Image de signature introuvable : {signature_path}")
 
-    return Image.open(signature_path)
+    img = Image.open(signature_path)
+    if img.mode != 'RGBA':
+        img = img.convert('RGBA')
+    # NOTE: Ne PAS appeler prepare_signature_image ici.
+    # Le code de signature le fait déjà. Un double traitement dégrade la qualité.
+    return img
 
 def load_stamp_image(user):
     """
@@ -755,6 +763,31 @@ def sign_pdf(flow_id):
                 ca_chain_files=cert_chain
             )
             signer_stamp = load_signature_image(user)
+            
+            # Calculer la taille de boîte personnalisée si fournie
+            flow_signature_size = params.get('signature_size')
+            box_width = 250
+            box_height = 80
+            if flow_signature_size and isinstance(flow_signature_size, dict):
+                custom_w = flow_signature_size.get('width')
+                custom_h = flow_signature_size.get('height')
+                if custom_w and int(custom_w) > 0:
+                    box_width = int(custom_w)
+                if custom_h and int(custom_h) > 0:
+                    box_height = int(custom_h)
+
+            # Pipeline qualité UNE SEULE FOIS avant la boucle de signatures
+            from app.utils.public_signature_utils import prepare_signature_image
+            if signer_stamp is not None and isinstance(signer_stamp, Image.Image):
+                signer_stamp = prepare_signature_image(signer_stamp, target_box_width=box_width)
+
+            # Calculer la hauteur selon le ratio de l'image si pas de height explicite
+            if signer_stamp is not None and isinstance(signer_stamp, Image.Image):
+                img_w, img_h = signer_stamp.size
+                if img_w > 0 and img_h > 0:
+                    if not (flow_signature_size and isinstance(flow_signature_size, dict) and flow_signature_size.get('height')):
+                        box_height = int(box_width * (img_h / img_w))
+                        box_height = max(40, min(200, box_height))
 
             # Recharger le PDF
             with open(signed_pdf_path, 'rb') as f:
@@ -779,7 +812,7 @@ def sign_pdf(flow_id):
                     field_name = f"Signature_{uuid.uuid4().hex}"
                     sig_field_spec = SigFieldSpec(
                         sig_field_name=field_name,
-                        box=(x, y, x + 150, y + 100),
+                        box=(x, y, x + box_width, y + box_height),
                         on_page=page
                     )
                     append_signature_field(pdf_writer, sig_field_spec)
@@ -793,7 +826,7 @@ def sign_pdf(flow_id):
                         signer=signer,
                         stamp_style=StaticStampStyle(
                             background=images.PdfImage(signer_stamp),
-                            background_opacity=0.7,
+                            background_opacity=0.9,
                             border_width=0
                         )
                     )
@@ -852,7 +885,7 @@ def sign_pdf(flow_id):
                     actions_list += "<li>👀 Aprobation de lecture</li>"
             actions_list += "</ul>"
 
-            subject = "Action requise"
+            subject = "Action Required"
             body = f"Bonjour {recipient_name},\n\nVous avez une action requise pour le document {document.name}.\n\nActions requises:\n{actions_list}\n\nCordialement,\nL'equipe DKBSign"
             template_data = {
                 'name': recipient_name,
@@ -872,11 +905,27 @@ def sign_pdf(flow_id):
 
         db.session.commit()
 
+        # Génération de la preuve de signature
+        # TEMPORAIREMENT DÉSACTIVÉ — la BD de prod n'est pas encore migrée pour le système de proof.
+        # À ré-activer une fois la migration appliquée.
+        # proof = create_signature_proof(
+        #     document_id=document.id,
+        #     signer=user,
+        #     signer_type='user',
+        #     document_name=document.name,
+        #     signature_method='api_key',
+        #     company=company,
+        #     flow_id=flow_id,
+        #     flow_priority=line_flow.priority if line_flow else None,
+        # )
+        # proof = None
+
         return jsonify({
             "message": "Document signé avec succès",
             "flow_id": flow_id,
             "document_id": document.id,
             "download_url": download_url
+            # "proof": build_proof_urls(proof, api_prefix='publicapi_') if proof else None
         }), 200
 
     except Exception as e:

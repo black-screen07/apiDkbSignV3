@@ -8,6 +8,9 @@ class Config:
     # Sécurité
     SECRET_KEY = os.getenv('SECRET_KEY', 'fallback_secret')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+    
+    # Limite de taille des fichiers uploadés (50 MB par défaut)
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB
 
     # Base de données
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')

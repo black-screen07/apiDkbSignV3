@@ -15,6 +15,9 @@ import uuid
 import json
 from app.models import User, Company, Document, Contact, DocumentConsent, Signer, CertTypeEnum, db, UrgencyEnum
 from app.services.email_service import send_email
+# NOTE: Système de proof temporairement désactivé en prod (BD non migrée).
+# Ré-activer cet import et les blocs proof correspondants une fois la migration appliquée.
+# from app.services.signature_proof_service import create_signature_proof, build_proof_urls
 from datetime import datetime
 import tempfile
 import os
@@ -135,14 +138,6 @@ def sign_pdf():
         if not signer_stamp:
             return jsonify({"error": "Image de signature introuvable."}), 400
 
-        # Gérer l'image de signature (convertir en chemin si nécessaire)
-        if isinstance(signer_stamp, Image.Image):
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-                signer_stamp.save(tmp_file.name, format='PNG')
-                signer_stamp_path = tmp_file.name
-        else:
-            signer_stamp_path = signer_stamp
-
         # 4) Analyse des paramètres (JSON) + chargement du PDF
         params, file_url, file = parse_request_content(request)
         if not params or "pages" not in params or not isinstance(params["pages"], list):
@@ -233,14 +228,7 @@ def sign_pdf():
                 pages_dict[page_index].append(signature)
 
         pages = [{"page": p, "signatures": pages_dict[p]} for p in pages_dict]
-        input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, pages, signer, signer_stamp_path)
-
-        # Nettoyer le fichier temporaire si c'était une image PIL
-        if isinstance(signer_stamp, Image.Image):
-            try:
-                os.remove(signer_stamp_path)
-            except Exception as remove_error:
-                current_app.logger.error(f"Erreur de suppression fichier temp : {str(remove_error)}", exc_info=True)
+        input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, pages, signer, signer_stamp)
 
         # 11) Sauvegarder le PDF final
         try:
@@ -434,7 +422,7 @@ def sign_pdf():
             if not priorities or signer_info in top_priority_signers:
                 # Email avec OTP
                 sign_url = f"https://dkb-sign-ui.vercel.app/signed-docs/verify?uuid={new_signer.uuid}"
-                subject = "Veuillez signer le document"
+                subject = "Please Sign the Document"
                 
                 # Construction du message avec la date limite si définie
                 deadline_msg = ""
@@ -462,7 +450,7 @@ def sign_pdf():
 
             else:
                 # Notification simple
-                subject = "Notification de demande de signature"
+                subject = "Signature Request Notification"
                 body = (
                     f"Bonjour {name},\n\n"
                     f"Vous avez été ajouté en tant que signataire pour le document \"{document.name}\".\n"
@@ -547,11 +535,31 @@ def sign_pdf():
                     except Exception as e:
                         current_app.logger.error(f"Erreur lors de l'envoi de l'email à {recipient.email}: {str(e)}")
 
+        # Génération de la preuve de signature
+        # TEMPORAIREMENT DÉSACTIVÉ — la BD de prod n'est pas encore migrée pour le système de proof.
+        # À ré-activer une fois la migration appliquée.
+        # proof = create_signature_proof(
+        #     document_id=document.id,
+        #     signer=user,
+        #     signer_type='user',
+        #     document_name=params.get("name", "document"),
+        #     file_path_after=signed_pdf_path,
+        #     cert_path=cert_path,
+        #     cert_type=company.cert_type if company else None,
+        #     signature_method='api_key',
+        #     signature_positions=params.get("pages"),
+        #     consent_accepted=True,
+        #     company=company,
+        #     batch_id=params.get("batch_id"),
+        # )
+        # proof = None
+
         return jsonify({
             "message": "Document signé par l'initiateur et notifications envoyées.",
-            "doc_signed": full_signed_pdf_url,  # Utiliser la même URL que dans le QR code
+            "doc_signed": full_signed_pdf_url,
             "document_id": document.id,
             "status": document.status
+            # "proof": build_proof_urls(proof, api_prefix='publicapi_') if proof else None
         }), 200
 
     except SQLAlchemyError as db_error:
@@ -803,28 +811,21 @@ def sign_document():
         if hasattr(user_acc, 'company_id') and user_acc.company_id:
             company = Company.query.get(user_acc.company_id)
 
-        # Chargement de l'image de signature
+        # Chargement de l'image de signature directement en objet PIL
+        # pour éviter la perte de qualité liée au cycle save/reload via fichier temporaire
+        signer_stamp_img = None
         if current_signer.account_type == "external":
             if 'signature_image' not in request.files:
                 return jsonify({"error": "Le fichier 'signature_image' est obligatoire pour un signataire externe."}), 400
             file_img = request.files['signature_image']
             if file_img.filename == '':
                 return jsonify({"error": "Aucun fichier de signature n'a été fourni."}), 400
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-                file_img.save(tmp_file.name)
-                signer_stamp_path = tmp_file.name
+            file_img.stream.seek(0)
+            signer_stamp_img = Image.open(file_img.stream)
         else:
-            signer_stamp = load_signature_image(user_acc)
-            if not signer_stamp:
+            signer_stamp_img = load_signature_image(user_acc)
+            if not signer_stamp_img:
                 return jsonify({"error": "Image de signature introuvable."}), 400
-            if hasattr(signer_stamp, 'save'):
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-                    signer_stamp.save(tmp_file.name, format='PNG')
-                    signer_stamp_path = tmp_file.name
-            elif isinstance(signer_stamp, (str, bytes, os.PathLike)) and os.path.exists(signer_stamp):
-                signer_stamp_path = signer_stamp
-            else:
-                return jsonify({"error": "Type d'image de signature non valide."}), 400
 
         # Récupération des certificats via la fonction utilitaire
         cert_path, key_path, cert_chain = retrieve_certificates(user_acc, company, document_id)
@@ -918,7 +919,7 @@ def sign_document():
         pages = [{"page": p, "signatures": pages_dict[p]} for p in pages_dict]
 
         # Application de la signature via l'utilitaire (toute la révision, QR code compris, sera signée)
-        input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, pages, signer_obj, signer_stamp_path)
+        input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, pages, signer_obj, signer_stamp_img)
 
         # Sauvegarde du PDF signé
         new_signed_pdf_folder = os.path.join(SIGNED_PDF_FOLDER, subfolder)
@@ -977,10 +978,6 @@ def sign_document():
                                 f"Vous pouvez le télécharger ici : {download_link}"
                             )
                             send_whatsapp_notification(clean_phone, whatsapp_message)
-
-        # Suppression du fichier temporaire pour un signataire externe
-        if current_signer.account_type == "external":
-            os.remove(signer_stamp_path)
 
         full_signed_pdf_url = url_for(
             'publicapi_sign_and_assign_bp.download_file',
@@ -1088,7 +1085,9 @@ def sign_document_multiple():
                 if hasattr(user_acc, 'company_id') and user_acc.company_id:
                     company = Company.query.get(user_acc.company_id)
 
-                # Chargement de l'image de signature
+                # Chargement de l'image de signature directement en objet PIL
+                # pour éviter la perte de qualité liée au cycle save/reload via fichier temporaire
+                signer_stamp_img = None
                 if current_signer.account_type == "external":
                     if 'signature_image' not in request.files:
                         errors.append({
@@ -1100,22 +1099,12 @@ def sign_document_multiple():
                     if file_img.filename == '':
                         errors.append({"document_id": document.id, "error": "Aucun fichier de signature n'a été fourni."})
                         continue
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-                        file_img.save(tmp_file.name)
-                        signer_stamp_path = tmp_file.name
+                    file_img.stream.seek(0)
+                    signer_stamp_img = Image.open(file_img.stream)
                 else:
-                    signer_stamp = load_signature_image(user_acc)
-                    if not signer_stamp:
+                    signer_stamp_img = load_signature_image(user_acc)
+                    if not signer_stamp_img:
                         errors.append({"document_id": document.id, "error": "Image de signature introuvable."})
-                        continue
-                    if hasattr(signer_stamp, 'save'):
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-                            signer_stamp.save(tmp_file.name, format='PNG')
-                            signer_stamp_path = tmp_file.name
-                    elif isinstance(signer_stamp, (str, bytes, os.PathLike)) and os.path.exists(signer_stamp):
-                        signer_stamp_path = signer_stamp
-                    else:
-                        errors.append({"document_id": document.id, "error": "Type d'image de signature non valide."})
                         continue
 
                 # Récupération des certificats
@@ -1217,7 +1206,7 @@ def sign_document_multiple():
 
                 # Application de la signature
                 current_app.logger.info(f"Applying signature to document_id: {document.id}")
-                input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, pages, signer_obj, signer_stamp_path)
+                input_pdf_buffer = sign_pdf_pages(input_pdf_buffer, pages, signer_obj, signer_stamp_img)
 
                 # Sauvegarde du PDF signé
                 new_signed_pdf_folder = os.path.join(SIGNED_PDF_FOLDER, subfolder)
@@ -1284,10 +1273,6 @@ def sign_document_multiple():
                     "message": "Document signé avec succès.",
                     "doc_signed": final_signed_pdf_url
                 })
-
-                # Suppression du fichier temporaire pour un signataire externe
-                if current_signer.account_type == "external":
-                    os.remove(signer_stamp_path)
 
             except Exception as e:
                 current_app.logger.error(f"Error processing document_id {document.id}: {str(e)}", exc_info=True)

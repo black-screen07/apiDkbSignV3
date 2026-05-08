@@ -191,7 +191,7 @@ def assign_only():
 
                 if not priorities or signer_data in top_priority_signers:
                     sign_url = f"https://dkb-sign-ui.vercel.app/signed-docs/verify?uuid={new_signer.uuid}"
-                    subject = "Veuillez signer le document"
+                    subject = "Please Sign the Document"
                     if urgency != UrgencyEnum.NORMAL:
                         subject = f"[{urgency.upper()}] {subject}"
                     body = (
@@ -211,7 +211,7 @@ def assign_only():
                         current_year=datetime.now().year
                     )
                 else:
-                    subject = "Notification de demande de signature"
+                    subject = "Signature Request Notification"
                     if urgency != UrgencyEnum.NORMAL:
                         subject = f"[{urgency.upper()}] {subject}"
                     body = (
