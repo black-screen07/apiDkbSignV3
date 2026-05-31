@@ -7,6 +7,9 @@ services:
       - .env
     volumes:
       - ./logs:/app/logs
+      - ./certificates:/app/certificates
+      - ./signatures:/app/signatures
+      - ./documents:/app/documents
     depends_on:
       mysql:
         condition: service_healthy

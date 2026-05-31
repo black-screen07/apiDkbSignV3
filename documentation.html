@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DKB Sign API - Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <path d="M12 18v-6"></path>
+                    <path d="M9 15l3 3 3-3"></path>
+                </svg>
+                <span class="logo-text">DKB Sign API</span>
+            </div>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-content">
+            <div class="sidebar-section">
+                <h3>Documentation</h3>
+                <a href="#overview" class="sidebar-link active">Vue d'ensemble</a>
+                <a href="#authentication" class="sidebar-link">Authentification</a>
+                <a href="#otp" class="sidebar-link">Envoi & Vérification OTP</a>
+                <a href="#parameters" class="sidebar-link">Paramètres</a>
+                <a href="#new-features" class="sidebar-link">Nouvelles fonctionnalités</a>
+                <a href="#examples" class="sidebar-link">Exemples</a>
+                <a href="#responses" class="sidebar-link">Réponses</a>
+                <a href="#use-cases" class="sidebar-link">Cas d'usage</a>
+                <a href="#changelog" class="sidebar-link">Changelog</a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Hero Section -->
+            <section class="hero">
+                <div class="badge">v3.0</div>
+                <h1 class="hero-title">API Signature Upload Multiple</h1>
+                <p class="hero-subtitle">Signez plusieurs documents PDF avec des signataires externes en toute simplicité</p>
+                <div class="hero-endpoint">
+                    <code>POST /v3/sign-upload-multiple</code>
+                </div>
+            </section>
+
+            <!-- Overview -->
+            <section id="overview" class="section">
+                <h2 class="section-title">Vue d'ensemble</h2>
+                
+                <div class="alert alert-info" style="margin-bottom: 2rem;">
+                    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <div>
+                        <strong>URL de Base</strong>
+                        <p><code>https://dkbsignv3.com/apiDkbSignV3</code></p>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-icon"><i class="fas fa-globe"></i></div>
+                        <h3>Endpoint</h3>
+                        <code>/v3/sign-upload-multiple</code>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-icon"><i class="fas fa-paper-plane"></i></div>
+                        <h3>Méthode</h3>
+                        <code>POST</code>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-icon"><i class="fas fa-file-alt"></i></div>
+                        <h3>Content-Type</h3>
+                        <code>multipart/form-data</code>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-icon"><i class="fas fa-key"></i></div>
+                        <h3>Auth</h3>
+                        <code>X-API-Key</code>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning">
+                    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <div>
+                        <strong>Limites de sécurité</strong>
+                        <p>Maximum de <strong>100 documents</strong> par requête pour éviter les problèmes de performance, timeout HTTP et surcharge mémoire.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Authentication -->
+            <section id="authentication" class="section">
+                <h2 class="section-title">Authentification</h2>
+                <p class="section-description">L'API utilise un système d'authentification en deux étapes : connexion JWT puis génération de clé API.</p>
+                
+                <!-- Step 1: Login -->
+                <h3 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--primary);">Étape 1 : Connexion et obtention du token JWT</h3>
+                
+                <div class="param-card">
+                    <div class="param-header">
+                        <h3>POST /auth/login</h3>
+                    </div>
+                    <p class="param-description">Authentifiez-vous pour obtenir un token JWT d'accès.</p>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Requête cURL</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>curl -X POST "https://dkbsignv3.com/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "freddy.egnin@dkbsign.com",
+    "password": "testpassord@dksign2025"
+  }'</code></pre>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Body JSON</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>{
+  "email": "freddy.egnin@dkbsign.com",
+  "password": "testpassord@dksign2025"
+}</code></pre>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Réponse JSON</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "message": "Connexion réussie en tant qu'employé.",
+  "user": {
+    "email": "freddy.egnin@dkbsign.com",
+    "name": "Admin",
+    "sub_name": "Sign",
+    "user_type": "employee",
+    "company": {
+      "name": "DKBS",
+      "signature_volume": 100,
+      "signature_volume_used": 98
+    }
+  }
+}</code></pre>
+                    </div>
+                </div>
+
+                <!-- Step 2: Generate API Key -->
+                <h3 style="font-size: 1.5rem; margin: 2rem 0 1rem; color: var(--primary);">Étape 2 : Génération de la clé API</h3>
+                
+                <div class="param-card">
+                    <div class="param-header">
+                        <h3>POST /auth/generate-app-key</h3>
+                    </div>
+                    <p class="param-description">Utilisez le token JWT obtenu pour générer une clé API permanente.</p>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Requête cURL</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>curl -X POST "https://dkbsignv3.com/auth/generate-app-key" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."</code></pre>
+                    </div>
+                </div>
+
+                <!-- Step 3: Use API Key -->
+                <h3 style="font-size: 1.5rem; margin: 2rem 0 1rem; color: var(--primary);">Étape 3 : Utilisation de la clé API</h3>
+                
+                <p class="section-description">Une fois la clé API générée, incluez-la dans les headers de vos requêtes :</p>
+                
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-language">Headers</span>
+                        <button class="copy-btn" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <pre><code>X-API-Key: votre_cle_api
+# OU
+Authorization: Bearer votre_cle_api</code></pre>
+                </div>
+
+                <div class="alert alert-warning">
+                    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <div>
+                        <strong>Sécurité</strong>
+                        <p>Conservez votre clé API en sécurité. Ne la partagez jamais et ne la commitez pas dans votre code source.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- OTP -->
+            <section id="otp" class="section">
+                <h2 class="section-title">Envoi &amp; Vérification OTP</h2>
+                <p class="section-description">Ces deux endpoints permettent d'envoyer un code OTP à 6 chiffres par email et de le vérifier côté serveur. Ils sont utiles pour valider l'identité d'un signataire avant toute action sensible.</p>
+
+                <div class="alert alert-info" style="margin-bottom: 2rem;">
+                    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <div>
+                        <strong>Fonctionnement</strong>
+                        <p>Le code OTP est valide <strong>5 minutes</strong> et est <strong>à usage unique</strong> — il est invalidé dès la première vérification réussie. Ces endpoints nécessitent une <strong>clé API</strong> (X-API-Key).</p>
+                    </div>
+                </div>
+
+                <!-- Send OTP -->
+                <h3 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--primary);">1. Envoi de l'OTP</h3>
+
+                <div class="param-card">
+                    <div class="param-header">
+                        <h3>POST /v3/send-otp</h3>
+                    </div>
+                    <p class="param-description">Génère un code OTP à 6 chiffres et l'envoie par email à l'adresse fournie.</p>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Body JSON</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>{
+  "email": "destinataire@exemple.com"
+}</code></pre>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Requête cURL</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>curl -X POST "https://dkbsignv3.com/v3/send-otp" \
+  -H "X-API-Key: votre_cle_api" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "destinataire@exemple.com"}'</code></pre>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Réponse JSON (200)</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>{
+  "message": "Code OTP envoyé avec succès à destinataire@exemple.com."
+}</code></pre>
+                    </div>
+                </div>
+
+                <!-- Verify OTP -->
+                <h3 style="font-size: 1.5rem; margin: 2rem 0 1rem; color: var(--primary);">2. Vérification de l'OTP</h3>
+
+                <div class="param-card">
+                    <div class="param-header">
+                        <h3>POST /v3/verify-otp</h3>
+                    </div>
+                    <p class="param-description">Vérifie le code OTP saisi par l'utilisateur. Le code est invalidé après une vérification réussie.</p>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Body JSON</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>{
+  "email": "destinataire@exemple.com",
+  "otp": "123456"
+}</code></pre>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Requête cURL</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>curl -X POST "https://dkbsignv3.com/v3/verify-otp" \
+  -H "X-API-Key: votre_cle_api" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "destinataire@exemple.com", "otp": "123456"}'</code></pre>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Réponses JSON</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>// 200 - Succès
+{ "valid": true, "message": "OTP validé avec succès." }
+
+// 400 - Code invalide
+{ "valid": false, "error": "OTP invalide." }
+
+// 404 - Aucun OTP en attente
+{ "valid": false, "error": "Aucun OTP en attente pour cet email." }
+
+// 410 - Code expiré
+{ "valid": false, "error": "Code OTP expiré." }</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Parameters -->
+            <section id="parameters" class="section">
+                <h2 class="section-title">Paramètres d'entrée</h2>
+
+                <!-- Documents -->
+                <div class="param-card">
+                    <div class="param-header">
+                        <h3>documents[]</h3>
+                        <span class="badge badge-required">OBLIGATOIRE</span>
+                    </div>
+                    <p class="param-description">Documents PDF à signer (maximum 100 fichiers)</p>
+                    <div class="param-details">
+                        <div class="param-detail">
+                            <strong>Type:</strong> <code>File (PDF)</code>
+                        </div>
+                        <div class="param-detail">
+                            <strong>Format:</strong> <code>Tableau de fichiers</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Signature Images -->
+                <div class="param-card">
+                    <div class="param-header">
+                        <h3>signature_image_X</h3>
+                        <span class="badge badge-optional">OPTIONNEL</span>
+                    </div>
+                    <p class="param-description">Images de signature personnalisées pour chaque signataire externe</p>
+                    <div class="param-details">
+                        <div class="param-detail">
+                            <strong>Type:</strong> <code>File (Image)</code>
+                        </div>
+                        <div class="param-detail">
+                            <strong>Format:</strong> <code>signature_image_0, signature_image_1, ...</code>
+                        </div>
+                        <div class="param-detail">
+                            <strong>Formats acceptés:</strong> <code>PNG, JPG, JPEG, GIF</code>
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <div>
+                            <p>Si absent, l'image de signature par défaut de l'utilisateur authentifié sera utilisée.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Signers Data -->
+                <div class="param-card">
+                    <div class="param-header">
+                        <h3>signers_data</h3>
+                        <span class="badge badge-required">OBLIGATOIRE</span>
+                    </div>
+                    <p class="param-description">Informations des signataires externes au format JSON</p>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">JSON</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>[
+  {
+    "name": "Dupont",                    // OBLIGATOIRE
+    "firstname": "Jean",                 // OBLIGATOIRE
+    "function": "Directeur Général",     // OBLIGATOIRE
+    "email": "jean.dupont@example.com",  // OPTIONNEL
+    "phone": "+225123456789"              // OPTIONNEL
+  }
+]</code></pre>
+                    </div>
+                </div>
+
+                <!-- Signature Params -->
+                <div class="param-card">
+                    <div class="param-header">
+                        <h3>signature_params</h3>
+                        <span class="badge badge-required">OBLIGATOIRE</span>
+                    </div>
+                    <p class="param-description">Paramètres de positionnement des signatures au format JSON</p>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">JSON</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>[
+  {
+    "document_index": 0,              // Index du document
+    "signer_index": 0,                // Index du signataire
+    
+    "pages": [                        // Positionnement manuel
+      {
+        "page": 0,
+        "signatures": [
+          {"x": 100, "y": 200}
+        ]
+      }
+    ],
+    
+    "sign_on_last_page": true,        // Signature auto sur dernière page
+    "show_signer_info": true,         // Afficher infos signataire
+    
+    "signature_size": {               // Taille personnalisée
+      "width": 150,
+      "height": 50
+    },
+    
+    "qrcodes": [                      // QR codes optionnels
+      {
+        "page": 0,
+        "x": 50, "y": 50,
+        "size": 30,
+        "data": "https://verify.dkbsign.com/doc/12345"
+      }
+    ]
+  }
+]</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- New Features -->
+            <section id="new-features" class="section">
+                <h2 class="section-title"><i class="fas fa-star"></i> Nouvelles fonctionnalités</h2>
+
+                <!-- Feature 1 -->
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon"><i class="fas fa-user"></i></div>
+                        <div>
+                            <h3>Affichage des informations du signataire</h3>
+                            <code>show_signer_info</code>
+                        </div>
+                    </div>
+                    <p class="feature-description">Affiche automatiquement le nom, la fonction et l'email du signataire sous l'image de signature.</p>
+                    
+                    <div class="feature-benefits">
+                        <div class="benefit"><i class="fas fa-check-circle"></i> Identification claire</div>
+                        <div class="benefit"><i class="fas fa-check-circle"></i> Traçabilité améliorée</div>
+                        <div class="benefit"><i class="fas fa-check-circle"></i> Conformité juridique</div>
+                        <div class="benefit"><i class="fas fa-check-circle"></i> Rendu professionnel</div>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Exemple</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>{
+  "document_index": 0,
+  "signer_index": 0,
+  "pages": [{"page": 0, "signatures": [{"x": 100, "y": 200}]}],
+  "show_signer_info": true
+}</code></pre>
+                    </div>
+
+                    <div class="signature-preview">
+                        <div class="signature-box">
+                            <div class="signature-image">[Image signature]</div>
+                            <div class="signature-info">
+                                <div>Jean Dupont</div>
+                                <div>Directeur Général</div>
+                                <div>jean.dupont@example.com</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon"><i class="fas fa-file-pdf"></i></div>
+                        <div>
+                            <h3>Signature automatique sur dernière page</h3>
+                            <code>sign_on_last_page</code>
+                        </div>
+                    </div>
+                    <p class="feature-description">Place automatiquement toutes les signatures sur la dernière page du document, quel que soit le nombre de pages.</p>
+                    
+                    <div class="feature-benefits">
+                        <div class="benefit"><i class="fas fa-check-circle"></i> Fonctionne avec n'importe quel nombre de pages</div>
+                        <div class="benefit"><i class="fas fa-check-circle"></i> Pas besoin de connaître le nombre de pages</div>
+                        <div class="benefit"><i class="fas fa-check-circle"></i> Positions calculées automatiquement</div>
+                        <div class="benefit"><i class="fas fa-check-circle"></i> Option par signataire</div>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Exemple simple</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>{
+  "document_index": 0,
+  "signer_index": 0,
+  "sign_on_last_page": true
+}</code></pre>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Avec positions personnalisées</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>{
+  "document_index": 0,
+  "signer_index": 0,
+  "sign_on_last_page": true,
+  "pages": [{"page": 0, "signatures": [{"x": 150, "y": 220}]}]
+  // Les positions X/Y sont respectées, seule la page change
+}</code></pre>
+                    </div>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <div class="feature-icon"><i class="fas fa-ruler"></i></div>
+                        <div>
+                            <h3>Taille personnalisée des signatures</h3>
+                            <code>signature_size</code>
+                        </div>
+                    </div>
+                    <p class="feature-description">Spécifiez une taille personnalisée pour les images de signature.</p>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Exemple</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>"signature_size": {
+  "width": 150,   // Largeur en pixels
+  "height": 50    // Hauteur en pixels
+}</code></pre>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <div>
+                            <p>L'algorithme de redimensionnement LANCZOS est utilisé pour une qualité optimale.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Examples -->
+            <section id="examples" class="section">
+                <h2 class="section-title">Exemples d'utilisation</h2>
+
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('curl')">cURL</button>
+                    <button class="tab-btn" onclick="switchTab('python')">Python</button>
+                    <button class="tab-btn" onclick="switchTab('javascript')">JavaScript</button>
+                </div>
+
+                <div id="curl" class="tab-content active">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Bash</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>curl -X POST "https://dkbsignv3.com/apiDkbSignV3/v3/sign-upload-multiple" \
+  -H "X-API-Key: your_app_key" \
+  -F "documents[]=@document1.pdf" \
+  -F "signature_image_0=@signature_jean.png" \
+  -F 'signers_data=[
+    {
+      "name": "Dupont",
+      "firstname": "Jean",
+      "function": "Directeur Général",
+      "email": "jean.dupont@example.com"
+    }
+  ]' \
+  -F 'signature_params=[
+    {
+      "document_index": 0,
+      "signer_index": 0,
+      "sign_on_last_page": true,
+      "show_signer_info": true,
+      "signature_size": {"width": 180, "height": 60}
+    }
+  ]'</code></pre>
+                    </div>
+                </div>
+
+                <div id="python" class="tab-content">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">Python</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>import requests
+import json
+
+url = "https://dkbsignv3.com/apiDkbSignV3/v3/sign-upload-multiple"
+headers = {"X-API-Key": "your_app_key"}
+
+signers_data = [
+    {
+        "name": "Dupont",
+        "firstname": "Jean",
+        "function": "Directeur Général",
+        "email": "jean.dupont@example.com"
+    }
+]
+
+signature_params = [
+    {
+        "document_index": 0,
+        "signer_index": 0,
+        "sign_on_last_page": True,
+        "show_signer_info": True,
+        "signature_size": {"width": 180, "height": 60}
+    }
+]
+
+files = {
+    'documents': ('document.pdf', open('document.pdf', 'rb')),
+    'signature_image_0': ('signature.png', open('signature.png', 'rb'))
+}
+
+data = {
+    'signers_data': json.dumps(signers_data),
+    'signature_params': json.dumps(signature_params)
+}
+
+response = requests.post(url, headers=headers, files=files, data=data)
+result = response.json()
+
+if response.status_code == 200:
+    print(f"Succès: {result['message']}")
+else:
+    print(f"Erreur: {result.get('error')}")</code></pre>
+                    </div>
+                </div>
+
+                <div id="javascript" class="tab-content">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">JavaScript</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>const formData = new FormData();
+
+// Ajouter les documents
+formData.append('documents', documentFile);
+formData.append('signature_image_0', signatureFile);
+
+// Données des signataires
+const signersData = [
+    {
+        name: "Dupont",
+        firstname: "Jean",
+        function: "Directeur Général",
+        email: "jean.dupont@example.com"
+    }
+];
+
+// Paramètres de signature
+const signatureParams = [
+    {
+        document_index: 0,
+        signer_index: 0,
+        sign_on_last_page: true,
+        show_signer_info: true,
+        signature_size: { width: 180, height: 60 }
+    }
+];
+
+formData.append('signers_data', JSON.stringify(signersData));
+formData.append('signature_params', JSON.stringify(signatureParams));
+
+// Envoyer la requête
+fetch('https://dkbsignv3.com/apiDkbSignV3/v3/sign-upload-multiple', {
+    method: 'POST',
+    headers: {
+        'X-API-Key': 'your_app_key'
+    },
+    body: formData
+})
+.then(response => response.json())
+.then(data => {
+    console.log('Succès:', data);
+})
+.catch(error => {
+    console.error('Erreur:', error);
+});</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Responses -->
+            <section id="responses" class="section">
+                <h2 class="section-title">Réponses de l'API</h2>
+
+                <div class="response-card success">
+                    <div class="response-header">
+                        <h3><i class="fas fa-check-circle" style="color: #10b981;"></i> Succès (200)</h3>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-language">JSON</span>
+                            <button class="copy-btn" onclick="copyCode(this)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <pre><code>{
+  "message": "2 document(s) signé(s) avec succès",
+  "signed_documents": [
+    {
+      "document_name": "document1.pdf",
+      "signed_pdf_url": "https://dkbsignv3.com/.../signed.pdf",
+      "signers": [
+        {
+          "name": "Dupont",
+          "firstname": "Jean",
+          "function": "Directeur Général"
+        }
+      ]
+    }
+  ],
+  "total_signatures": 2
+}</code></pre>
+                    </div>
+                </div>
+
+                <div class="response-card error">
+                    <div class="response-header">
+                        <h3><i class="fas fa-times-circle" style="color: #ef4444;"></i> Erreurs</h3>
+                    </div>
+                    
+                    <div class="error-list">
+                        <div class="error-item">
+                            <div class="error-code">400</div>
+                            <div class="error-desc">
+                                <strong>Paramètres invalides</strong>
+                                <code>{"error": "Champ 'name' manquant pour le signataire 0"}</code>
+                            </div>
+                        </div>
+                        <div class="error-item">
+                            <div class="error-code">400</div>
+                            <div class="error-desc">
+                                <strong>Limite dépassée</strong>
+                                <code>{"error": "Nombre maximum de documents dépassé. Limite: 100"}</code>
+                            </div>
+                        </div>
+                        <div class="error-item">
+                            <div class="error-code">401</div>
+                            <div class="error-desc">
+                                <strong>Authentification</strong>
+                                <code>{"error": "Clé API manquante ou invalide"}</code>
+                            </div>
+                        </div>
+                        <div class="error-item">
+                            <div class="error-code">403</div>
+                            <div class="error-desc">
+                                <strong>Volume insuffisant</strong>
+                                <code>{"error": "Volume de signatures insuffisant"}</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Use Cases -->
+            <section id="use-cases" class="section">
+                <h2 class="section-title">Cas d'usage</h2>
+
+                <div class="use-case-grid">
+                    <div class="use-case-card">
+                        <h3><i class="fas fa-file-signature"></i> Contrat simple</h3>
+                        <p>1 signataire sur la dernière page</p>
+                        <div class="code-block">
+                            <pre><code>{
+  "sign_on_last_page": true,
+  "show_signer_info": true
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="use-case-card">
+                        <h3><i class="fas fa-users"></i> Document multi-signataires</h3>
+                        <p>3 signataires côte à côte</p>
+                        <div class="code-block">
+                            <pre><code>[
+  {
+    "signer_index": 0,
+    "sign_on_last_page": true,
+    "pages": [{"page": 0, 
+      "signatures": [{"x": 50, "y": 200}]}]
+  },
+  {
+    "signer_index": 1,
+    "sign_on_last_page": true,
+    "pages": [{"page": 0,
+      "signatures": [{"x": 250, "y": 200}]}]
+  }
+]</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="use-case-card">
+                        <h3><i class="fas fa-file-contract"></i> Paraphe + Signature</h3>
+                        <p>Paraphe sur chaque page + signature finale</p>
+                        <div class="code-block">
+                            <pre><code>[
+  {
+    "signer_index": 0,
+    "pages": [
+      {"page": 0, "signatures": [{"x": 500, "y": 20}]},
+      {"page": 1, "signatures": [{"x": 500, "y": 20}]}
+    ],
+    "signature_size": {"width": 50, "height": 30}
+  },
+  {
+    "signer_index": 0,
+    "sign_on_last_page": true,
+    "show_signer_info": true
+  }
+]</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="use-case-card">
+                        <h3><i class="fas fa-qrcode"></i> Avec QR Code</h3>
+                        <p>Signature avec QR code de vérification</p>
+                        <div class="code-block">
+                            <pre><code>{
+  "sign_on_last_page": true,
+  "show_signer_info": true,
+  "qrcodes": [
+    {
+      "page": 0,
+      "x": 50, "y": 50,
+      "size": 30,
+      "data": "https://verify.dkbsign.com/..."
+    }
+  ]
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Changelog -->
+            <section id="changelog" class="section">
+                <h2 class="section-title">Changelog</h2>
+
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-badge">2.3</div>
+                        <div class="timeline-content">
+                            <h3>Version 2.3 - 2026-05-11</h3>
+                            <ul>
+                                <li><i class="fas fa-check"></i> Ajout de <code>POST /v3/send-otp</code> : Envoi d'un code OTP par email</li>
+                                <li><i class="fas fa-check"></i> Ajout de <code>POST /v3/verify-otp</code> : Vérification du code OTP</li>
+                                <li><i class="fas fa-check"></i> OTP persisté en base de données, valide 5 minutes, usage unique</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-badge">2.2</div>
+                        <div class="timeline-content">
+                            <h3>Version 2.2 - 2025-10-09</h3>
+                            <ul>
+                                <li><i class="fas fa-check"></i> Ajout de <code>show_signer_info</code> : Affichage des informations du signataire</li>
+                                <li><i class="fas fa-check"></i> Ajout de <code>sign_on_last_page</code> : Signature automatique sur dernière page</li>
+                                <li><i class="fas fa-check"></i> Ajout de <code>custom_x</code> : Position X personnalisée</li>
+                                <li><i class="fas fa-check"></i> Amélioration : Respect des positions X/Y avec sign_on_last_page</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-badge">2.1</div>
+                        <div class="timeline-content">
+                            <h3>Version 2.1 - 2025-10-08</h3>
+                            <ul>
+                                <li>Ajout de <code>signature_size</code> : Taille personnalisée des signatures</li>
+                                <li>Amélioration des métadonnées de signature pour Adobe Reader</li>
+                                <li>Ajout de l'email et du téléphone dans les métadonnées</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-badge">2.0</div>
+                        <div class="timeline-content">
+                            <h3>Version 2.0 - 2025-10-07</h3>
+                            <ul>
+                                <li>Support des signataires externes</li>
+                                <li>Upload d'images de signature personnalisées</li>
+                                <li>Limite de sécurité : 100 documents maximum</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="footer">
+                <div class="footer-content">
+                    <div class="footer-section">
+                        <h4>DKB Sign API</h4>
+                        <p>Solution professionnelle de signature électronique</p>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Version</h4>
+                        <p>API v3.0 - Documentation v2.3</p>
+                        <p>Dernière mise à jour : 2026-05-11</p>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Support</h4>
+                        <p>Pour toute question technique, contactez notre équipe de support.</p>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
