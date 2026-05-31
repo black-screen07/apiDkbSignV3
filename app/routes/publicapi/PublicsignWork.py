@@ -674,9 +674,14 @@ def sign_upload_multiple_documents():
                         current_app.logger.warning(f"⚠️ Signature sans image pour le signataire {signer_index}")
 
                 # 14. Configuration du signataire PyHanko
-                # Pour personnePhysique: utiliser le certificat P12 propre au signataire (via son email)
-                # Pour cachetServeur ou individual: utiliser le certificat global de l'initiateur
+                # - personnePhysique : P12 propre au signataire (via son email)
+                # - cachetServeur + use_employee_p12=true : override par signature_params,
+                #   on prend le P12 de l'employé même si l'entreprise est en cachet serveur.
+                #   Si le P12 est introuvable, on refuse la signature (pas de fallback silencieux).
+                # - Sinon : certificat global de l'initiateur (cachet serveur ou individual)
                 signer_email_for_cert = signers_data[signer_index].get('email', '')
+                use_employee_p12 = bool(param.get('use_employee_p12', False))
+
                 if company and company.cert_type == CertTypeEnum.PERSONNE_PHYSIQUE and signer_email_for_cert:
                     try:
                         s_cert_path, s_key_path, s_cert_chain = retrieve_certificates_by_email(signer_email_for_cert, company)
@@ -685,6 +690,20 @@ def sign_upload_multiple_documents():
                     except (ValueError, FileNotFoundError) as cert_err:
                         signature_logger.warning(f"⚠️ Certificat personnel introuvable pour {signer_email_for_cert}: {str(cert_err)}. Utilisation du certificat de l'initiateur.")
                         signer = create_pdf_signer(key_path, cert_path, cert_chain)
+                elif company and company.cert_type == CertTypeEnum.CACHET_SERVEUR and use_employee_p12:
+                    if not signer_email_for_cert:
+                        return jsonify({
+                            "error": f"use_employee_p12=true mais aucun email fourni pour le signataire {signer_index}."
+                        }), 400
+                    try:
+                        s_cert_path, s_key_path, s_cert_chain = retrieve_certificates_by_email(signer_email_for_cert, company)
+                        signer = create_pdf_signer(s_key_path, s_cert_path, s_cert_chain)
+                        signature_logger.info(f"🔐 Override use_employee_p12: P12 personnel chargé pour {signer_email_for_cert} (entreprise CACHET_SERVEUR)")
+                    except (ValueError, FileNotFoundError) as cert_err:
+                        signature_logger.error(f"❌ use_employee_p12=true mais P12 introuvable pour {signer_email_for_cert}: {str(cert_err)}")
+                        return jsonify({
+                            "error": f"Certificat P12 introuvable pour le signataire {signer_email_for_cert} (use_employee_p12=true)."
+                        }), 400
                 else:
                     signer = create_pdf_signer(key_path, cert_path, cert_chain)
 
