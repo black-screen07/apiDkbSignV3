@@ -512,7 +512,9 @@ Authorization: Bearer votre_cle_api</code></pre>
     
     "sign_on_last_page": true,        // Signature auto sur dernière page
     "show_signer_info": true,         // Afficher infos signataire
-    
+
+    "use_employee_p12": false,        // Si entreprise cachetServeur : utiliser le P12 de l'employé (via email signataire)
+
     "signature_size": {               // Taille personnalisée
       "width": 150,
       "height": 50
@@ -528,6 +530,22 @@ Authorization: Bearer votre_cle_api</code></pre>
     ]
   }
 ]</code></pre>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <div>
+                            <p><strong>Sélection du certificat de signature</strong></p>
+                            <ul>
+                                <li>Entreprise <code>cachetServeur</code> : le cachet serveur de l'entreprise est utilisé par défaut pour tous les signataires.</li>
+                                <li>Entreprise <code>personnePhysique</code> : le certificat <code>.p12</code> personnel de chaque signataire est utilisé (recherché via son email).</li>
+                                <li>Pour signer avec le <code>.p12</code> personnel d'un employé alors que l'entreprise est en <code>cachetServeur</code>, passez <code>"use_employee_p12": true</code> dans le <code>signature_params</code> du signataire concerné. L'email du signataire (dans <code>signers_data</code>) est utilisé pour localiser le P12. Si le P12 est introuvable, la requête échoue avec une erreur 400.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </section>
